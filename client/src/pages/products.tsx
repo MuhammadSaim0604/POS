@@ -236,8 +236,6 @@ export default function Products() {
                   </TableHead>
                   <TableHead>Medicine Name</TableHead>
                   <TableHead>Barcode</TableHead>
-                  <TableHead>Color</TableHead>
-                  <TableHead>Size</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Price</TableHead>
