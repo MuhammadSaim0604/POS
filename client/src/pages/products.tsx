@@ -597,12 +597,12 @@ function ProductForm({
       ? {
           name: initialData.name,
           description: initialData.description || "",
-          barcode: initialData.barcode,
+          barcode: initialData.barcode || "",
          
           price: initialData.price,
           actualPrice: initialData.actualPrice || 0,
           stock: initialData.stock,
-          categoryId: initialData.categoryId,
+          categoryId: initialData.categoryId || "",
           lowStockThreshold: initialData.lowStockThreshold || 10,
           sku: initialData.sku || "",
           itemsPerPacket: initialData.itemsPerPacket || 1,
@@ -611,6 +611,7 @@ function ProductForm({
           supplierPhone: initialData.supplierPhone || "",
           supplierAddress: initialData.supplierAddress || "",
           image: initialData.image || "",
+          expiryDate: initialData.expiryDate || "",
         
         }
       : {
@@ -632,6 +633,7 @@ function ProductForm({
           supplierPhone: "",
           supplierAddress: "",
           image: "",
+          expiryDate: "",
         
         },
   });
@@ -1047,6 +1049,16 @@ function ProductForm({
                     {form.formState.errors.name.message}
                   </span>
                 )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="expiryDate">Expiry Date</Label>
+                <Input
+                  id="expiryDate"
+                  placeholder="Enter Expiry Date (e.g. 2025-12-31)"
+                  {...form.register("expiryDate")}
+                  data-testid="input-medicine-expiry-date"
+                />
               </div>
 
               <div className="grid gap-2">

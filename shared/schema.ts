@@ -50,6 +50,7 @@ export const productSchema = z.object({
     .or(z.literal("")),
 
   actualPrice: z.number().min(0).default(0), // Actual purchase price per item
+  expiryDate: z.string().or(z.date()).optional(),
 });
 
 const baseInsertProductSchema = productSchema.omit({ id: true });
