@@ -168,10 +168,10 @@ export function VariationGenerator({
     <div className="space-y-6 border-t pt-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">
-          Variable Product Generator
+          Variable Medicine Generator
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Create multiple product variations (e.g., {productName || "Product"}{" "}
+          Create multiple medicine variations (e.g., {productName || "Medicine"}{" "}
           in different colors and sizes)
         </p>
       </div>

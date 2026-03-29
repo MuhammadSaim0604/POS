@@ -52,7 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { type Product, type BillItem, type Category } from "@shared/schema";
+import { type Medicine, type BillItem, type Category } from "@shared/schema";
 import { BillTemplate } from "@/components/bill-template";
 import { useCategories } from "@/hooks/use-categories";
 import html2pdf from "html2pdf.js";
@@ -161,20 +161,20 @@ export default function CreateBill() {
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && barcodeInput.trim()) {
       e.preventDefault();
-      const product = products?.find((p: Product) => p.barcode === barcodeInput.trim());
-      if (product) {
-        addProductToBill(product);
+      const medicine = products?.find((p: Medicine) => p.barcode === barcodeInput.trim());
+      if (medicine) {
+        addProductToBill(medicine);
         setBarcodeInput("");
         barcodeInputRef.current?.focus();
         toast({
-          title: "Product Added",
-          description: product.name,
+          title: "Medicine Added",
+          description: medicine.name,
           duration: 1000,
         });
       } else {
         toast({
-          title: "Product Not Found",
-          description: `No product found with barcode: ${barcodeInput}`,
+          title: "Medicine Not Found",
+          description: `No medicine found with barcode: ${barcodeInput}`,
           variant: "destructive",
         });
         setBarcodeInput("");
@@ -225,9 +225,9 @@ export default function CreateBill() {
     );
   };
 
-  const addProductToBill = (product: Product) => {
+  const addProductToBill = (medicine: Medicine) => {
     const existingItemIndex = currentBill.items.findIndex(
-      (item) => item.productId === product.id,
+      (item) => item.productId === medicine.id,
     );
 
     if (existingItemIndex > -1) {
@@ -236,10 +236,10 @@ export default function CreateBill() {
       updateCurrentBill({ items: updatedItems });
     } else {
       const newItem: BillItem = {
-        productId: product.id,
-        productName: product.name,
-        itemsPerPacket: product.itemsPerPacket || 1,
-        pricePerItem: product.price,
+        productId: medicine.id,
+        productName: medicine.name,
+        itemsPerPacket: medicine.itemsPerPacket || 1,
+        pricePerItem: medicine.price,
         packetQuantity: 1,
         discountPerItem: 0,
       };
@@ -288,7 +288,7 @@ export default function CreateBill() {
     if (currentBill.items.length === 0) {
       toast({
         title: "Empty Bill",
-        description: "Please add at least one product.",
+        description: "Please add at least one medicine.",
         variant: "destructive",
       });
       return;
@@ -392,7 +392,7 @@ export default function CreateBill() {
   };
 
   const filteredProducts = products?.filter(
-    (p: Product) =>
+    (p: Medicine) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.barcode.includes(searchQuery) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -486,9 +486,9 @@ export default function CreateBill() {
                               size="sm"
                               onClick={() => setShowSearch(true)}
                               className="gap-2"
-                              data-testid="button-add-product"
+                              data-testid="button-add-medicine"
                             >
-                              <PlusCircle className="w-4 h-4" /> Add Product
+                              <PlusCircle className="w-4 h-4" /> Add Medicine
                             </Button>
                           </div>
                         </div>
@@ -508,7 +508,7 @@ export default function CreateBill() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Product</TableHead>
+                            <TableHead>Medicine</TableHead>
                             <TableHead className="w-24">Price</TableHead>
                             <TableHead className="w-24">Items/Pkt</TableHead>
                             <TableHead className="w-24">Packets</TableHead>
@@ -608,7 +608,7 @@ export default function CreateBill() {
                                 colSpan={6}
                                 className="h-32 text-center text-muted-foreground"
                               >
-                                No items added. Use "Add Product" or scan
+                                No items added. Use "Add Medicine" or scan
                                 barcode.
                               </TableCell>
                             </TableRow>
@@ -832,57 +832,57 @@ export default function CreateBill() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="Search by product name, barcode, or SKU..."
+                placeholder="Search by medicine name, barcode, or SKU..."
                 className="pl-10 py-3 text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
-                data-testid="input-product-search"
+                data-testid="input-medicine-search"
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {filteredProducts?.length || 0} product(s) available
+              {filteredProducts?.length || 0} medicine(s) available
             </p>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {filteredProducts && filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product: Product) => (
+                {filteredProducts.map((medicine: Medicine) => (
                   <Card
-                    key={product.id}
+                    key={medicine.id}
                     onClick={() => {
-                      addProductToBill(product);
+                      addProductToBill(medicine);
                       setShowSearch(false);
                     }}
                     className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all active:scale-95 group flex flex-col"
-                    data-testid={`card-product-${product.id}`}
+                    data-testid={`card-medicine-${medicine.id}`}
                   >
                     <CardContent className="p-4 flex flex-col gap-3 h-full justify-between">
                       <div>
                         <h3
                           className="font-semibold text-sm line-clamp-2"
-                          title={product.name}
+                          title={medicine.name}
                         >
-                          {product.name}
+                          {medicine.name}
                         </h3>
                         
                         <p className="text-xs text-muted-foreground mt-2">
                           Barcode:{" "}
-                          <span className="font-mono">{product.barcode}</span>
+                          <span className="font-mono">{medicine.barcode}</span>
                         </p>
-                        {product.sku && (
+                        {medicine.sku && (
                           <p className="text-xs text-muted-foreground">
                             SKU:{" "}
-                            <span className="font-mono">{product.sku}</span>
+                            <span className="font-mono">{medicine.sku}</span>
                           </p>
                         )}
                       </div>
 
                       <div className="bg-muted rounded overflow-hidden flex items-center justify-center w-full h-40">
-                        {product.image ? (
+                        {medicine.image ? (
                           <img
-                            src={product.image}
-                            alt={product.name}
+                            src={medicine.image}
+                            alt={medicine.name}
                             className="w-40 h-40 object-cover"
                           />
                         ) : (
@@ -891,7 +891,7 @@ export default function CreateBill() {
                               Barcode
                             </p>
                             <p className="font-mono text-xs font-semibold truncate px-1">
-                              {product.barcode}
+                              {medicine.barcode}
                             </p>
                           </div>
                         )}
@@ -900,18 +900,18 @@ export default function CreateBill() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <span className="font-bold text-sm text-primary block">
-                            PKR {product.price.toFixed(2)}
+                            PKR {medicine.price.toFixed(2)}
                           </span>
                           <p
                             className={`text-xs font-medium ${
-                              product.stock > 10
+                              medicine.stock > 10
                                 ? "text-green-600"
-                                : product.stock > 0
+                                : medicine.stock > 0
                                   ? "text-orange-600"
                                   : "text-destructive"
                             }`}
                           >
-                            {product.stock} in stock
+                            {medicine.stock} in stock
                           </p>
                         </div>
                         <Button

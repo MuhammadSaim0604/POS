@@ -11,12 +11,12 @@ export default function Help() {
       icon: Package,
       questions: [
         {
-          q: "How do I add product variations?",
-          a: "When creating a product, toggle the 'Is Variation' switch. You can then specify color and size details. For packet-based inventory, ensure 'Unit Type' is set to 'Packet' and specify 'Items Per Packet'."
+          q: "How do I add medicine variations?",
+          a: "When creating a medicine, toggle the 'Is Variation' switch. You can then specify color and size details. For packet-based inventory, ensure 'Unit Type' is set to 'Packet' and specify 'Items Per Packet'."
         },
         {
           q: "What is the low stock threshold?",
-          a: "This is a custom alert level you set for each product. When stock falls below this number, the product will appear in the 'Low Stock Alerts' section on your dashboard."
+          a: "This is a custom alert level you set for each medicine. When stock falls below this number, the medicine will appear in the 'Low Stock Alerts' section on your dashboard."
         }
       ]
     },

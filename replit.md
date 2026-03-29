@@ -2,11 +2,11 @@
 
 ## Overview
 
-Nexus POS is a full-stack offline-first Point of Sale and Inventory Management system designed for wholesale businesses. The application supports barcode scanning, multi-bill management, product variations with packet-based inventory, and real-time stock tracking. Built with Express backend, React frontend, and MongoDB for data persistence.
+Nexus POS is a full-stack offline-first Point of Sale and Inventory Management system designed for wholesale businesses. The application supports barcode scanning, multi-bill management, medicine variations with packet-based inventory, and real-time stock tracking. Built with Express backend, React frontend, and MongoDB for data persistence.
 
 **Key Features:**
 - Multi-bill management with tab-based interface for handling multiple customers simultaneously
-- Product variations with color, size, and packet-based inventory tracking
+- Medicine variations with color, size, and packet-based inventory tracking
 - EAN-13 barcode generation and scanning support
 - Real-time cart updates and stock management
 - Sales analytics and low-stock alerts

@@ -70,7 +70,7 @@ export function BillTemplate({ bill }: BillTemplateProps) {
         <thead>
           <tr>
             <th>Sr</th>
-            <th className="text-left">Product</th>
+            <th className="text-left">Medicine</th>
             <th className="text-right">Price</th>
             <th className="text-right">Qty</th>
             <th className="text-right">Total</th>

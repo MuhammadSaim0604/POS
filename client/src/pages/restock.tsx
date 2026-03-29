@@ -67,9 +67,9 @@ export default function Restock() {
     const params = new URLSearchParams(search);
     const barcode = params.get("barcode");
     if (barcode && products) {
-      const product = products.find((p) => p.barcode === barcode);
-      if (product) {
-        setSelectedProduct(product.id);
+      const medicine = products.find((p) => p.barcode === barcode);
+      if (medicine) {
+        setSelectedProduct(medicine.id);
         setIsScanning(false);
       }
     }
@@ -81,15 +81,15 @@ export default function Restock() {
   const [showProductNotFound, setShowProductNotFound] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-fill fields when product selection changes
+  // Auto-fill fields when medicine selection changes
   useEffect(() => {
     if (selectedProduct && products) {
-      const product = products.find((p) => p.id === selectedProduct);
-      if (product) {
-        setPrice(product.price);
-        setActualPrice(product.actualPrice || 0);
-        setItemsPerPacket(product.itemsPerPacket || 1);
-        if (product.supplierName) setSupplier(product.supplierName);
+      const medicine = products.find((p) => p.id === selectedProduct);
+      if (medicine) {
+        setPrice(medicine.price);
+        setActualPrice(medicine.actualPrice || 0);
+        setItemsPerPacket(medicine.itemsPerPacket || 1);
+        if (medicine.supplierName) setSupplier(medicine.supplierName);
         setIsScanning(false);
       }
     }
@@ -111,13 +111,13 @@ export default function Restock() {
     e.preventDefault();
     if (!barcodeInput) return;
 
-    const product = products?.find((p) => p.barcode === barcodeInput);
-    if (product) {
-      setSelectedProduct(product.id);
+    const medicine = products?.find((p) => p.barcode === barcodeInput);
+    if (medicine) {
+      setSelectedProduct(medicine.id);
       setBarcodeInput("");
       toast({
-        title: "Product Identified",
-        description: `Selected: ${product.name}`,
+        title: "Medicine Identified",
+        description: `Selected: ${medicine.name}`,
       });
     } else {
       setShowProductNotFound(true);
@@ -262,7 +262,7 @@ export default function Restock() {
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="pl-6">Date & Time</TableHead>
-                    <TableHead>Product</TableHead>
+                    <TableHead>Medicine</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-center">Added Qty</TableHead>
                   </TableRow>
@@ -279,15 +279,15 @@ export default function Restock() {
                       ))
                     : restocks
                         ?.filter((p) => {
-                          const product = products?.find(
+                          const medicine = products?.find(
                             (prod) => prod.id === p.productId,
                           );
-                          return `${product?.name} ${p.supplier}`
+                          return `${medicine?.name} ${p.supplier}`
                             .toLowerCase()
                             .includes(searchHistory.toLowerCase());
                         })
                         .map((p) => {
-                          const product = products?.find(
+                          const medicine = products?.find(
                             (prod) => prod.id === p.productId,
                           );
                           return (
@@ -296,7 +296,7 @@ export default function Restock() {
                                 {format(new Date(p.date), "MMM dd, yyyy HH:mm")}
                               </TableCell>
                               <TableCell className="font-medium">
-                                {product?.name || "Deleted"}
+                                {medicine?.name || "Deleted"}
                               </TableCell>
                               <TableCell className="text-muted-foreground italic">
                                 {p.supplier || "—"}
@@ -329,7 +329,7 @@ export default function Restock() {
                       Scanning started...
                     </h3>
                     <p className="text-sm text-primary/70 font-medium">
-                      Point your scanner at a product barcode to auto-fill
+                      Point your scanner at a medicine barcode to auto-fill
                       details.
                     </p>
                   </div>
@@ -358,37 +358,37 @@ export default function Restock() {
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 overflow-y-auto max-h-[calc(100vh-20rem)] pr-2">
-                {filteredProducts?.map((product) => (
+                {filteredProducts?.map((medicine) => (
                   <Card
-                    key={product.id}
-                    onClick={() => setSelectedProduct(product.id)}
+                    key={medicine.id}
+                    onClick={() => setSelectedProduct(medicine.id)}
                     className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all active:scale-95 group flex flex-col bg-card"
                   >
                     <CardContent className="p-3 flex flex-col gap-3 h-full justify-between">
                       <div>
                         <h3
                           className="font-semibold text-xs line-clamp-2"
-                          title={product.name}
+                          title={medicine.name}
                         >
-                          {product.name}
+                          {medicine.name}
                         </h3>
                         <p className="text-xs text-muted-foreground">
                           Stock:{" "}
                           <span
                             className={
-                              product.stock < 5 ? "text-red-500 font-bold" : ""
+                              medicine.stock < 5 ? "text-red-500 font-bold" : ""
                             }
                           >
-                            {product.stock}
+                            {medicine.stock}
                           </span>
                         </p>
                       </div>
 
                       <div className="bg-muted rounded overflow-hidden flex items-center justify-center w-20 h-20 mx-auto">
-                        {product.image ? (
+                        {medicine.image ? (
                           <img
-                            src={product.image}
-                            alt={product.name}
+                            src={medicine.image}
+                            alt={medicine.name}
                             className="w-20 h-20 object-cover"
                           />
                         ) : (
@@ -397,7 +397,7 @@ export default function Restock() {
                               Barcode
                             </p>
                             <p className="font-mono text-[10px] font-semibold truncate px-1">
-                              {product.barcode}
+                              {medicine.barcode}
                             </p>
                           </div>
                         )}
@@ -405,7 +405,7 @@ export default function Restock() {
 
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-sm text-primary">
-                          PKR {product.price.toFixed(2)}
+                          PKR {medicine.price.toFixed(2)}
                         </span>
                         <Button
                           size="icon"
@@ -452,7 +452,7 @@ export default function Restock() {
                     <div className="flex-1 space-y-4">
                       <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
-                        Product Specifications
+                        Medicine Specifications
                       </p>
                       <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                         <div className="flex flex-col gap-0.5 border-b pb-1">
@@ -622,10 +622,10 @@ export default function Restock() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive font-bold text-2xl">
               <AlertCircle className="w-6 h-6" />
-              Product Not Found
+              Medicine Not Found
             </DialogTitle>
             <DialogDescription className="text-lg">
-              The barcode you scanned doesn't match any product in our database.
+              The barcode you scanned doesn't match any medicine in our database.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-3 justify-end pt-6">
@@ -643,7 +643,7 @@ export default function Restock() {
                 onClick={() => setShowProductNotFound(false)}
                 className="rounded-xl px-8"
               >
-                Add New Product
+                Add New Medicine
               </Button>
             </Link>
           </DialogFooter>

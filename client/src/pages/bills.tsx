@@ -318,7 +318,7 @@ export default function Bills() {
                         <TableHeader className="bg-muted/50">
                           <TableRow>
                             <TableHead className="w-16"></TableHead>
-                            <TableHead>Product</TableHead>
+                            <TableHead>Medicine</TableHead>
                             <TableHead className="text-center">
                               Packets
                             </TableHead>
@@ -333,7 +333,7 @@ export default function Bills() {
                         </TableHeader>
                         <TableBody>
                           {selectedBill.items.map((item, index) => {
-                            const product = products?.find(
+                            const medicine = products?.find(
                               (p) => p.id === item.productId,
                             );
                             const totalPerPacket =
@@ -348,9 +348,9 @@ export default function Bills() {
                               >
                                 <TableCell className="p-2">
                                   <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden border">
-                                    {product?.image ? (
+                                    {medicine?.image ? (
                                       <img
-                                        src={product.image}
+                                        src={medicine.image}
                                         alt={item.productName}
                                         className="w-full h-full object-cover"
                                       />

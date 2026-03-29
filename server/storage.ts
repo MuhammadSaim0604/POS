@@ -1,5 +1,5 @@
 import {
-  type Product,
+  type Medicine,
   type InsertProduct,
   type Category,
   type InsertCategory,
@@ -44,7 +44,7 @@ const ProductSchema = new Schema({
 });
 
 const BillItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
   productName: { type: String, required: true },
   pricePerItem: { type: Number, required: true, min: 0 },
   itemsPerPacket: { type: Number, required: true, min: 1 },
@@ -76,7 +76,7 @@ const BillSchema = new Schema({
 });
 
 const SaleItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
   name: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
   priceAtSale: { type: Number, required: true },
@@ -89,7 +89,7 @@ const SaleSchema = new Schema({
 });
 
 const RestockSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
   quantity: { type: Number, required: true, min: 1 },
   date: { type: Date, default: Date.now },
   supplier: { type: String },
@@ -108,7 +108,7 @@ const SettingsSchema = new Schema({
 
 // --- Mongoose Models ---
 const CategoryModel = mongoose.model("Category", CategorySchema);
-const ProductModel = mongoose.model("Product", ProductSchema);
+const ProductModel = mongoose.model("Medicine", ProductSchema);
 const BillModel = mongoose.model("Bill", BillSchema);
 const SaleModel = mongoose.model("Sale", SaleSchema);
 const RestockModel = mongoose.model("Restock", RestockSchema);
@@ -123,17 +123,17 @@ export interface IStorage {
   deleteCategory(id: string): Promise<void>;
 
   // Products
-  getProducts(): Promise<Product[]>;
-  getProduct(id: string): Promise<Product | undefined>;
-  getProductByBarcode(barcode: string): Promise<Product | undefined>;
-  createProduct(product: InsertProduct): Promise<Product>;
+  getProducts(): Promise<Medicine[]>;
+  getProduct(id: string): Promise<Medicine | undefined>;
+  getProductByBarcode(barcode: string): Promise<Medicine | undefined>;
+  createProduct(medicine: InsertProduct): Promise<Medicine>;
   updateProduct(
     id: string,
-    product: Partial<InsertProduct>,
-  ): Promise<Product | undefined>;
+    medicine: Partial<InsertProduct>,
+  ): Promise<Medicine | undefined>;
   deleteProduct(id: string): Promise<void>;
   updateProductStock(id: string, quantityChange: number): Promise<void>;
-  getLowStockProducts(): Promise<Product[]>;
+  getLowStockProducts(): Promise<Medicine[]>;
 
   // Bills
   getBills(): Promise<Bill[]>;
@@ -196,7 +196,7 @@ export class MongoStorage implements IStorage {
   }
 
   // Products
-  async getProducts(): Promise<Product[]> {
+  async getProducts(): Promise<Medicine[]> {
     const products = await ProductModel.find();
     return products.map((p) => {
       const obj = p.toObject();
@@ -205,11 +205,11 @@ export class MongoStorage implements IStorage {
         id: obj._id.toString(),
         categoryId: obj.categoryId.toString(),
 
-      } as unknown as Product;
+      } as unknown as Medicine;
     });
   }
 
-  async getProduct(id: string): Promise<Product | undefined> {
+  async getProduct(id: string): Promise<Medicine | undefined> {
     const p = await ProductModel.findById(id);
     if (!p) return undefined;
     const obj = p.toObject();
@@ -217,10 +217,10 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-    } as unknown as Product;
+    } as unknown as Medicine;
   }
 
-  async getProductByBarcode(barcode: string): Promise<Product | undefined> {
+  async getProductByBarcode(barcode: string): Promise<Medicine | undefined> {
     const p = await ProductModel.findOne({ barcode });
     if (!p) return undefined;
     const obj = p.toObject();
@@ -228,23 +228,23 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-    } as unknown as Product;
+    } as unknown as Medicine;
   }
 
-  async createProduct(product: InsertProduct): Promise<Product> {
-    const newProduct = await ProductModel.create(product);
+  async createProduct(medicine: InsertProduct): Promise<Medicine> {
+    const newProduct = await ProductModel.create(medicine);
     const obj = newProduct.toObject();
     return {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-    } as unknown as Product;
+    } as unknown as Medicine;
   }
 
   async updateProduct(
     id: string,
     updates: Partial<InsertProduct>,
-  ): Promise<Product | undefined> {
+  ): Promise<Medicine | undefined> {
     const updated = await ProductModel.findByIdAndUpdate(id, updates, {
       new: true,
     });
@@ -254,7 +254,7 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-    } as unknown as Product;
+    } as unknown as Medicine;
   }
 
   async deleteProduct(id: string): Promise<void> {
@@ -267,7 +267,7 @@ export class MongoStorage implements IStorage {
     });
   }
 
-  async getLowStockProducts(): Promise<Product[]> {
+  async getLowStockProducts(): Promise<Medicine[]> {
     const products = await ProductModel.find({
       $expr: { $lte: ["$stock", "$lowStockThreshold"] },
     });
@@ -277,7 +277,7 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         categoryId: obj.categoryId.toString(),
-      } as unknown as Product;
+      } as unknown as Medicine;
     });
   }
 

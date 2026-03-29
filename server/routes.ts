@@ -47,15 +47,15 @@ export async function registerRoutes(
   });
 
   app.get(api.products.get.path, async (req, res) => {
-    const product = await storage.getProduct(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json(product);
+    const medicine = await storage.getProduct(req.params.id);
+    if (!medicine) return res.status(404).json({ message: "Medicine not found" });
+    res.json(medicine);
   });
 
   app.get(api.products.getByBarcode.path, async (req, res) => {
-    const product = await storage.getProductByBarcode(req.params.barcode);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json(product);
+    const medicine = await storage.getProductByBarcode(req.params.barcode);
+    if (!medicine) return res.status(404).json({ message: "Medicine not found" });
+    res.json(medicine);
   });
 
   app.get(api.products.lowStock.path, async (req, res) => {
@@ -66,8 +66,8 @@ export async function registerRoutes(
   app.post(api.products.create.path, async (req, res) => {
     try {
       const input = api.products.create.input.parse(req.body);
-      const product = await storage.createProduct(input);
-      res.status(201).json(product);
+      const medicine = await storage.createProduct(input);
+      res.status(201).json(medicine);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -80,7 +80,7 @@ export async function registerRoutes(
     try {
       const input = api.products.update.input.parse(req.body);
       const updated = await storage.updateProduct(req.params.id, input);
-      if (!updated) return res.status(404).json({ message: "Product not found" });
+      if (!updated) return res.status(404).json({ message: "Medicine not found" });
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -106,12 +106,12 @@ export async function registerRoutes(
       const input = api.sales.create.input.parse(req.body);
       // Validate stock availability before sale
       for (const item of input.items) {
-        const product = await storage.getProduct(item.productId);
-        if (!product) {
-          return res.status(400).json({ message: `Product ${item.name} not found` });
+        const medicine = await storage.getProduct(item.productId);
+        if (!medicine) {
+          return res.status(400).json({ message: `Medicine ${item.name} not found` });
         }
-        if (product.stock < item.quantity) {
-          return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+        if (medicine.stock < item.quantity) {
+          return res.status(400).json({ message: `Insufficient stock for ${medicine.name}` });
         }
       }
       

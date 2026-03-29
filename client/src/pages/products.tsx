@@ -55,7 +55,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   insertProductSchema,
   type InsertProduct,
-  type Product,
+  type Medicine,
 } from "@shared/schema";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,30 +72,30 @@ export default function Products() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Medicine | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set(),
   );
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   const filteredProducts = products?.filter(
-    (p: Product) =>
+    (p: Medicine) =>
       (p.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (p.barcode || "").includes(search),
   );
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
+    if (confirm("Are you sure you want to delete this medicine?")) {
       await deleteProduct.mutateAsync(id);
-      toast({ title: "Product deleted" });
+      toast({ title: "Medicine deleted" });
     }
   };
 
   const getCategoryName = (id: string) =>
     categories?.find((c) => c.id === id)?.name || "Uncategorized";
 
-  const getStockStatus = (product: Product) => {
-    const isLowStock = product.stock <= (product.lowStockThreshold || 10);
+  const getStockStatus = (medicine: Medicine) => {
+    const isLowStock = medicine.stock <= (medicine.lowStockThreshold || 10);
     return {
       isLowStock,
       color: isLowStock
@@ -119,7 +119,7 @@ export default function Products() {
     if (selectedProducts.size === filteredProducts?.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(filteredProducts?.map((p: Product) => p.id) || []));
+      setSelectedProducts(new Set(filteredProducts?.map((p: Medicine) => p.id) || []));
     }
   };
 
@@ -127,7 +127,7 @@ export default function Products() {
     if (selectedProducts.size === 0) {
       toast({
         title: "Error",
-        description: "Please select at least one product",
+        description: "Please select at least one medicine",
         variant: "destructive",
       });
       return;
@@ -141,7 +141,7 @@ export default function Products() {
 
     const options = {
       margin: 10,
-      filename: "product-barcodes.pdf",
+      filename: "medicine-barcodes.pdf",
       image: { type: "jpeg" as const, quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: {
@@ -178,9 +178,9 @@ export default function Products() {
             <Button
               onClick={() => setIsCreateOpen(true)}
               className="gap-2"
-              data-testid="button-add-product"
+              data-testid="button-add-medicine"
             >
-              <Plus className="w-4 h-4" /> Add Product
+              <Plus className="w-4 h-4" /> Add Medicine
             </Button>
           </div>
         </div>
@@ -234,7 +234,7 @@ export default function Products() {
                       data-testid="checkbox-select-all"
                     />
                   </TableHead>
-                  <TableHead>Product Name</TableHead>
+                  <TableHead>Medicine Name</TableHead>
                   <TableHead>Barcode</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead>Size</TableHead>
@@ -246,44 +246,44 @@ export default function Products() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts?.map((product: Product) => {
-                  const status = getStockStatus(product);
+                {filteredProducts?.map((medicine: Medicine) => {
+                  const status = getStockStatus(medicine);
                   return (
                     <TableRow
-                      key={product.id}
-                      data-testid={`row-product-${product.id}`}
-                      onClick={() => toggleProductSelection(product.id)}
+                      key={medicine.id}
+                      data-testid={`row-medicine-${medicine.id}`}
+                      onClick={() => toggleProductSelection(medicine.id)}
                       className="cursor-pointer hover:bg-muted/50"
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
-                          checked={selectedProducts.has(product.id)}
+                          checked={selectedProducts.has(medicine.id)}
                           onCheckedChange={() =>
-                            toggleProductSelection(product.id)
+                            toggleProductSelection(medicine.id)
                           }
-                          data-testid={`checkbox-product-${product.id}`}
+                          data-testid={`checkbox-medicine-${medicine.id}`}
                         />
                       </TableCell>
                       <TableCell className="font-medium">
-                        {product.name || "-"}
+                        {medicine.name || "-"}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {product.barcode || "-"}
+                        {medicine.barcode || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {product.sku || "-"}
+                        {medicine.sku || "-"}
                       </TableCell>
                       <TableCell>
-                        {getCategoryName(product.categoryId)}
+                        {getCategoryName(medicine.categoryId)}
                       </TableCell>
                       <TableCell className="text-right font-bold">
-                        {product.price.toFixed(0) || "-"}
+                        {medicine.price.toFixed(0) || "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}
                         >
-                          {product.stock || "-"}
+                          {medicine.stock || "-"}
                         </span>
                       </TableCell>
                       <TableCell
@@ -296,9 +296,9 @@ export default function Products() {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingProduct(product);
+                              setEditingProduct(medicine);
                             }}
-                            data-testid={`button-edit-product-${product.id}`}
+                            data-testid={`button-edit-medicine-${medicine.id}`}
                           >
                             <Pencil className="w-4 h-4 text-muted-foreground" />
                           </Button>
@@ -307,9 +307,9 @@ export default function Products() {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(product.id);
+                              handleDelete(medicine.id);
                             }}
-                            data-testid={`button-delete-product-${product.id}`}
+                            data-testid={`button-delete-medicine-${medicine.id}`}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
@@ -333,32 +333,32 @@ export default function Products() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-            {filteredProducts?.map((product: Product) => {
-              const status = getStockStatus(product);
+            {filteredProducts?.map((medicine: Medicine) => {
+              const status = getStockStatus(medicine);
               return (
                 <Card
-                  key={product.id}
-                  className={`overflow-hidden hover-elevate cursor-pointer ${selectedProducts.has(product.id) ? "ring-2 ring-primary bg-accent/5" : ""}`}
-                  data-testid={`card-product-${product.id}`}
-                  onClick={() => toggleProductSelection(product.id)}
+                  key={medicine.id}
+                  className={`overflow-hidden hover-elevate cursor-pointer ${selectedProducts.has(medicine.id) ? "ring-2 ring-primary bg-accent/5" : ""}`}
+                  data-testid={`card-medicine-${medicine.id}`}
+                  onClick={() => toggleProductSelection(medicine.id)}
                 >
                   <CardHeader className="pb-2 pt-2 px-2">
                     <div className="flex justify-between items-start gap-1">
                       <Checkbox
-                        checked={selectedProducts.has(product.id)}
+                        checked={selectedProducts.has(medicine.id)}
                         onCheckedChange={() => {
-                          toggleProductSelection(product.id);
+                          toggleProductSelection(medicine.id);
                         }}
                         className="mt-0.5"
-                        data-testid={`checkbox-card-product-${product.id}`}
+                        data-testid={`checkbox-card-medicine-${medicine.id}`}
                         onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-xs line-clamp-2">
-                          {product.name}
+                          {medicine.name}
                         </h3>
                         <p className="text-xs text-muted-foreground truncate">
-                          {getCategoryName(product.categoryId)}
+                          {getCategoryName(medicine.categoryId)}
                         </p>
                       </div>
                       <Badge
@@ -371,12 +371,12 @@ export default function Products() {
                   </CardHeader>
                   <CardContent className="space-y-2 p-2">
                     <div className="bg-muted rounded overflow-hidden flex items-center justify-center w-24 h-24 mx-auto">
-                      {product.image ? (
+                      {medicine.image ? (
                         <img
-                          src={product.image}
-                          alt={product.name}
+                          src={medicine.image}
+                          alt={medicine.name}
                           className="w-24 h-24 object-cover"
-                          data-testid={`img-product-${product.id}`}
+                          data-testid={`img-medicine-${medicine.id}`}
                         />
                       ) : (
                         <div className="text-center p-2">
@@ -384,7 +384,7 @@ export default function Products() {
                             Barcode
                           </p>
                           <p className="font-mono text-xs font-semibold">
-                            {product.barcode}
+                            {medicine.barcode}
                           </p>
                         </div>
                       )}
@@ -394,7 +394,7 @@ export default function Products() {
                       <div>
                         <p className="text-muted-foreground text-xs">Price</p>
                         <p className="font-semibold">
-                          {product.price.toFixed(0) || "-"}
+                          {medicine.price.toFixed(0) || "-"}
                         </p>
                       </div>
                       <div>
@@ -402,7 +402,7 @@ export default function Products() {
                         <p
                           className={`font-semibold ${status.isLowStock ? "text-red-600" : "text-green-600"}`}
                         >
-                          {product.stock || "-"}
+                          {medicine.stock || "-"}
                         </p>
                       </div>
                     </div>
@@ -414,9 +414,9 @@ export default function Products() {
                         className="flex-1 h-7 text-xs px-1"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingProduct(product);
+                          setEditingProduct(medicine);
                         }}
-                        data-testid={`button-edit-card-${product.id}`}
+                        data-testid={`button-edit-card-${medicine.id}`}
                       >
                         <Pencil className="w-2 h-2 mr-1" /> Edit
                       </Button>
@@ -426,9 +426,9 @@ export default function Products() {
                         className="flex-1 h-7 text-xs px-1 text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(product.id);
+                          handleDelete(medicine.id);
                         }}
-                        data-testid={`button-delete-card-${product.id}`}
+                        data-testid={`button-delete-card-${medicine.id}`}
                       >
                         <Trash2 className="w-2 h-2 mr-1" /> Del
                       </Button>
@@ -465,7 +465,7 @@ export default function Products() {
       <Dialog open={showBarcodeModal} onOpenChange={setShowBarcodeModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Product Barcodes - Print to PDF</DialogTitle>
+            <DialogTitle>Medicine Barcodes - Print to PDF</DialogTitle>
           </DialogHeader>
           <div
             id="barcode-print-area"
@@ -483,11 +483,11 @@ export default function Products() {
               }}
             >
               {(
-                filteredProducts?.filter((p: Product) => selectedProducts.has(p.id)) ||
+                filteredProducts?.filter((p: Medicine) => selectedProducts.has(p.id)) ||
                 []
-              ).map((product: Product) => (
+              ).map((medicine: Medicine) => (
                 <div
-                  key={product.id}
+                  key={medicine.id}
                   style={{
                     border: "1px solid #ccc",
                     padding: "20px",
@@ -503,7 +503,7 @@ export default function Products() {
                       fontWeight: "bold",
                     }}
                   >
-                    {product.name}
+                    {medicine.name}
                   </p>
                   <p
                     style={{
@@ -512,7 +512,7 @@ export default function Products() {
                       margin: "0 0 12px 0",
                     }}
                   >
-                    SKU: {product.sku || "N/A"}
+                    SKU: {medicine.sku || "N/A"}
                   </p>
                   <div
                     style={{
@@ -522,7 +522,7 @@ export default function Products() {
                     }}
                   >
                     <BarcodeComponent
-                      value={product.barcode}
+                      value={medicine.barcode}
                       format="CODE128"
                       width={2}
                       height={60}
@@ -537,7 +537,7 @@ export default function Products() {
                       fontWeight: "bold",
                     }}
                   >
-                    {product.barcode}
+                    {medicine.barcode}
                   </p>
                 </div>
               ))}
@@ -573,7 +573,7 @@ function ProductForm({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData?: Product;
+  initialData?: Medicine;
   categories: any[];
 }) {
   const createProduct = useCreateProduct();
@@ -993,10 +993,10 @@ function ProductForm({
     try {
       if (initialData) {
         await updateProduct.mutateAsync({ id: initialData.id, ...data });
-        toast({ title: "Product updated successfully" });
+        toast({ title: "Medicine updated successfully" });
       } else {
         await createProduct.mutateAsync(data);
-        toast({ title: "Product created successfully" });
+        toast({ title: "Medicine created successfully" });
       }
       onOpenChange(false);
       form.reset();
@@ -1004,7 +1004,7 @@ function ProductForm({
       console.error("Submit error:", error);
       toast({
         title: "Error",
-        description: "Failed to save product. Check required fields.",
+        description: "Failed to save medicine. Check required fields.",
         variant: "destructive",
       });
     }
@@ -1022,8 +1022,8 @@ function ProductForm({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle data-testid="dialog-title-product-form">
-              {initialData ? "Edit Product" : "Add New Product"}
+            <DialogTitle data-testid="dialog-title-medicine-form">
+              {initialData ? "Edit Medicine" : "Add New Medicine"}
             </DialogTitle>
           </DialogHeader>
           <form
@@ -1035,12 +1035,12 @@ function ProductForm({
               <h4 className="font-semibold text-sm">Basic Information</h4>
 
               <div className="grid gap-2">
-                <Label htmlFor="name">Product Name *</Label>
+                <Label htmlFor="name">Medicine Name *</Label>
                 <Input
                   id="name"
-                  placeholder="Enter product name"
+                  placeholder="Enter medicine name"
                   {...form.register("name")}
-                  data-testid="input-product-name"
+                  data-testid="input-medicine-name"
                 />
                 {form.formState.errors.name && (
                   <span className="text-red-500 text-xs">
@@ -1053,9 +1053,9 @@ function ProductForm({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Optional product description"
+                  placeholder="Optional medicine description"
                   {...form.register("description")}
-                  data-testid="textarea-product-description"
+                  data-testid="textarea-medicine-description"
                 />
               </div>
             </div>
@@ -1089,9 +1089,9 @@ function ProductForm({
               </div>
             </div>
 
-            {/* Product Image */}
+            {/* Medicine Image */}
             <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Product Image</h4>
+              <h4 className="font-semibold text-sm">Medicine Image</h4>
 
               <div className="grid gap-2">
                 <Label htmlFor="image">
@@ -1103,9 +1103,9 @@ function ProductForm({
                       <div className="w-32 h-32 mx-auto rounded overflow-hidden">
                         <img
                           src={imagePreview}
-                          alt="Product preview"
+                          alt="Medicine preview"
                           className="w-full h-full object-cover"
-                          data-testid="img-preview-product"
+                          data-testid="img-preview-medicine"
                         />
                       </div>
                       <p className="text-xs text-center text-muted-foreground">
@@ -1140,7 +1140,7 @@ function ProductForm({
                     <div className="text-center py-6">
                       <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                       <p className="text-sm text-muted-foreground mb-3">
-                        Click to upload & crop product image
+                        Click to upload & crop medicine image
                       </p>
                       <input
                         ref={fileInputRef}
@@ -1182,7 +1182,7 @@ function ProductForm({
                     {...form.register("actualPrice", {
                       valueAsNumber: true,
                     })}
-                    data-testid="input-product-actual-price"
+                    data-testid="input-medicine-actual-price"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -1193,7 +1193,7 @@ function ProductForm({
                     {...form.register("price", {
                       valueAsNumber: true,
                     })}
-                    data-testid="input-product-price"
+                    data-testid="input-medicine-price"
                   />
                 </div>
               </div>
@@ -1206,7 +1206,7 @@ function ProductForm({
                     <Input
                       id="barcode"
                       {...form.register("barcode")}
-                      data-testid="input-product-barcode"
+                      data-testid="input-medicine-barcode"
                     />
                     <Button
                       type="button"
@@ -1231,7 +1231,7 @@ function ProductForm({
                     id="stock"
                     type="number"
                     {...form.register("stock", { valueAsNumber: true })}
-                    data-testid="input-product-stock"
+                    data-testid="input-medicine-stock"
                   />
                   {form.formState.errors.stock && (
                     <span className="text-red-500 text-xs">
@@ -1248,7 +1248,7 @@ function ProductForm({
                     {...form.register("lowStockThreshold", {
                       valueAsNumber: true,
                     })}
-                    data-testid="input-product-threshold"
+                    data-testid="input-medicine-threshold"
                   />
                 </div>
 
@@ -1258,7 +1258,7 @@ function ProductForm({
                     id="sku"
                     placeholder="Stock Keeping Unit"
                     {...form.register("sku")}
-                    data-testid="input-product-sku"
+                    data-testid="input-medicine-sku"
                   />
                 </div>
                 

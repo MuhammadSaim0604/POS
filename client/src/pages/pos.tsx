@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { useProducts, useProductByBarcode } from "@/hooks/use-products";
 import { useCreateSale } from "@/hooks/use-sales";
-import { type Product, type SaleItem } from "@shared/schema";
+import { type Medicine, type SaleItem } from "@shared/schema";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,29 +40,29 @@ export default function POS() {
     return () => clearInterval(focusInterval);
   }, []);
 
-  const addToCart = (product: Product) => {
-    if (product.stock <= 0) {
+  const addToCart = (medicine: Medicine) => {
+    if (medicine.stock <= 0) {
       toast({
         title: "Out of Stock",
-        description: `${product.name} is currently unavailable.`,
+        description: `${medicine.name} is currently unavailable.`,
         variant: "destructive",
       });
       return;
     }
 
     setCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
+      const existing = prev.find((item) => item.productId === medicine.id);
       if (existing) {
-        if (existing.quantity >= product.stock) {
+        if (existing.quantity >= medicine.stock) {
           toast({
             title: "Stock Limit Reached",
-            description: `Only ${product.stock} items available.`,
+            description: `Only ${medicine.stock} items available.`,
             variant: "destructive",
           });
           return prev;
         }
         return prev.map((item) =>
-          item.productId === product.id
+          item.productId === medicine.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -70,17 +70,17 @@ export default function POS() {
       return [
         ...prev,
         {
-          productId: product.id,
-          name: product.name,
-          priceAtSale: product.price,
+          productId: medicine.id,
+          name: medicine.name,
+          priceAtSale: medicine.price,
           quantity: 1,
-          stockMax: product.stock,
+          stockMax: medicine.stock,
         },
       ];
     });
     toast({
       title: "Added to cart",
-      description: product.name,
+      description: medicine.name,
       duration: 1000,
     });
   };
@@ -112,14 +112,14 @@ export default function POS() {
 
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const product = products?.find((p) => p.barcode === barcodeInput);
-    if (product) {
-      addToCart(product);
+    const medicine = products?.find((p) => p.barcode === barcodeInput);
+    if (medicine) {
+      addToCart(medicine);
       setBarcodeInput("");
     } else {
       toast({
-        title: "Product Not Found",
-        description: `No product with barcode: ${barcodeInput}`,
+        title: "Medicine Not Found",
+        description: `No medicine with barcode: ${barcodeInput}`,
         variant: "destructive",
       });
       setBarcodeInput("");
@@ -161,7 +161,7 @@ export default function POS() {
   return (
     <Layout>
       <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
-        {/* Product Selection Area */}
+        {/* Medicine Selection Area */}
         <div className="lg:col-span-2 flex flex-col gap-4 h-full">
           <div className="flex gap-4">
             <div className="relative flex-1">
@@ -188,34 +188,34 @@ export default function POS() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-2">
-            {filteredProducts?.map((product) => (
+            {filteredProducts?.map((medicine) => (
               <Card
-                key={product.id}
-                onClick={() => addToCart(product)}
+                key={medicine.id}
+                onClick={() => addToCart(medicine)}
                 className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all active:scale-95 group flex flex-col"
               >
                 <CardContent className="p-3 flex flex-col gap-3 h-full justify-between">
                   <div>
-                    <h3 className="font-semibold text-xs line-clamp-2" title={product.name}>
-                      {product.name}
+                    <h3 className="font-semibold text-xs line-clamp-2" title={medicine.name}>
+                      {medicine.name}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Stock: <span className={product.stock < 5 ? "text-red-500 font-bold" : ""}>{product.stock}</span>
+                      Stock: <span className={medicine.stock < 5 ? "text-red-500 font-bold" : ""}>{medicine.stock}</span>
                     </p>
                   </div>
                   
                   <div className="bg-muted rounded overflow-hidden flex items-center justify-center w-20 h-20 mx-auto">
-                    {product.image ? (
+                    {medicine.image ? (
                       <img
-                        src={product.image}
-                        alt={product.name}
+                        src={medicine.image}
+                        alt={medicine.name}
                         className="w-20 h-20 object-cover"
                       />
                     ) : (
                       <div className="text-center p-1">
                         <p className="text-xs text-muted-foreground">Barcode</p>
                         <p className="font-mono text-xs font-semibold truncate px-1">
-                          {product.barcode}
+                          {medicine.barcode}
                         </p>
                       </div>
                     )}
@@ -223,7 +223,7 @@ export default function POS() {
 
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold text-sm text-primary">
-                      PKR {product.price.toFixed(2)}
+                      PKR {medicine.price.toFixed(2)}
                     </span>
                     <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full group-hover:bg-primary group-hover:text-white transition-colors flex-shrink-0">
                       <Plus className="h-3 w-3" />

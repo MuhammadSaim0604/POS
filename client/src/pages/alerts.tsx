@@ -32,18 +32,18 @@ export default function LowStockAlerts() {
         </div>
 
         <div className="grid gap-6">
-          {lowStockProducts.map((product) => (
+          {lowStockProducts.map((medicine) => (
             <Card
-              key={product.id}
+              key={medicine.id}
               className="border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-shadow bg-card overflow-hidden"
             >
               <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-6 flex-1 w-full">
                   <div className="relative w-24 h-24 md:w-32 md:h-32 bg-muted rounded-2xl overflow-hidden flex-shrink-0 shadow-inner border border-muted-foreground/10 flex items-center justify-center">
-                    {product.image ? (
+                    {medicine.image ? (
                       <img
-                        src={product.image}
-                        alt={product.name}
+                        src={medicine.image}
+                        alt={medicine.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -59,16 +59,16 @@ export default function LowStockAlerts() {
                   <div className="space-y-2 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-display font-bold text-xl md:text-2xl">
-                        {product.name}
+                        {medicine.name}
                       </h3>
-                      {product.color && (
+                      {medicine.color && (
                         <Badge variant="outline" className="bg-muted/50">
-                          {product.color}
+                          {medicine.color}
                         </Badge>
                       )}
-                      {product.size && (
+                      {medicine.size && (
                         <Badge variant="outline" className="bg-muted/50">
-                          {product.size}
+                          {medicine.size}
                         </Badge>
                       )}
                     </div>
@@ -80,20 +80,20 @@ export default function LowStockAlerts() {
                             Barcode
                           </span>
                           <span className="font-mono">
-                            {product.barcode || "N/A"}
+                            {medicine.barcode || "N/A"}
                           </span>
                         </p>
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                           <span className="font-bold uppercase text-[10px] tracking-wider px-2 py-0.5 bg-muted rounded">
                             Threshold
                           </span>
-                          <span>{product.lowStockThreshold || 5} units</span>
+                          <span>{medicine.lowStockThreshold || 5} units</span>
                         </p>
                       </div>
 
                       <div className="flex flex-col justify-center">
                         <div className="text-2xl font-bold text-red-600 flex items-baseline gap-2">
-                          {product.stock}
+                          {medicine.stock}
                           <span className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">
                             Packets Remaining
                           </span>
@@ -102,7 +102,7 @@ export default function LowStockAlerts() {
                           <div
                             className="bg-red-500 h-full rounded-full transition-all duration-500"
                             style={{
-                              width: `${Math.min(100, (product.stock / (product.lowStockThreshold || 5)) * 100)}%`,
+                              width: `${Math.min(100, (medicine.stock / (medicine.lowStockThreshold || 5)) * 100)}%`,
                             }}
                           />
                         </div>
@@ -112,11 +112,11 @@ export default function LowStockAlerts() {
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <Link href={`/restock?barcode=${product.barcode}`}>
+                  <Link href={`/restock?barcode=${medicine.barcode}`}>
                     <Button
                       size="lg"
                       className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 font-bold gap-2 active-elevate-2"
-                      data-testid={`button-restock-${product.id}`}
+                      data-testid={`button-restock-${medicine.id}`}
                     >
                       <Plus className="w-5 h-5" /> Restock Now
                     </Button>
@@ -127,7 +127,7 @@ export default function LowStockAlerts() {
                       size="sm"
                       className="w-full md:w-auto text-muted-foreground hover:text-foreground"
                     >
-                      Edit Product
+                      Edit Medicine
                     </Button>
                   </Link>
                 </div>

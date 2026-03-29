@@ -20,7 +20,7 @@ export function useProduct(id: string) {
       const url = buildUrl(api.products.get.path, { id });
       const res = await fetch(url);
       if (res.status === 404) return null;
-      if (!res.ok) throw new Error("Failed to fetch product");
+      if (!res.ok) throw new Error("Failed to fetch medicine");
       return await res.json();
     },
     enabled: !!id,
@@ -35,7 +35,7 @@ export function useProductByBarcode(barcode: string) {
       const url = buildUrl(api.products.getByBarcode.path, { barcode });
       const res = await fetch(url);
       if (res.status === 404) return null;
-      if (!res.ok) throw new Error("Failed to fetch product by barcode");
+      if (!res.ok) throw new Error("Failed to fetch medicine by barcode");
       return await res.json();
     },
     enabled: !!barcode,
@@ -53,7 +53,7 @@ export function useCreateProduct() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
       });
-      if (!res.ok) throw new Error("Failed to create product");
+      if (!res.ok) throw new Error("Failed to create medicine");
       return await res.json();
     },
     onSuccess: () => {
@@ -76,7 +76,7 @@ export function useUpdateProduct() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
       });
-      if (!res.ok) throw new Error("Failed to update product");
+      if (!res.ok) throw new Error("Failed to update medicine");
       return await res.json();
     },
     onSuccess: () => {
@@ -91,7 +91,7 @@ export function useDeleteProduct() {
     mutationFn: async (id: string) => {
       const url = buildUrl(api.products.delete.path, { id });
       const res = await fetch(url, { method: api.products.delete.method });
-      if (!res.ok) throw new Error("Failed to delete product");
+      if (!res.ok) throw new Error("Failed to delete medicine");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.products.list.path] });

@@ -26,7 +26,7 @@
 
 **Header Section**:
 - Search bar (prominent, left-aligned, w-full md:w-96)
-- Action buttons group (Add Product, Import, Export)
+- Action buttons group (Add Medicine, Import, Export)
 - View toggle (Cards/Table with icon buttons)
 - Filter button with badge showing active filter count
 
@@ -34,7 +34,7 @@
 
 *Cards View*:
 - Grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
-- Card structure: Product image (16:9 ratio), SKU, name, price, stock status, quick actions
+- Card structure: Medicine image (16:9 ratio), SKU, name, price, stock status, quick actions
 - Checkbox: Top-left overlay on card
 - Stock indicators: Colored badges (In Stock, Low Stock, Out of Stock)
 - Quick actions toolbar appears on selection
@@ -61,7 +61,7 @@
 - "Clear All" and "Apply" actions
 
 **Empty States**:
-- No products: Illustration + "Add your first product" CTA
+- No products: Illustration + "Add your first medicine" CTA
 - No search results: "No products found" with clear filters button
 - Loading: Skeleton cards/rows matching view type
 
@@ -70,11 +70,11 @@
 - Show "X-Y of Z products"
 
 ## Images
-**Product Images**: Essential throughout
+**Medicine Images**: Essential throughout
 - Card View: 16:9 aspect ratio, object-cover, placeholder for missing images
 - Table View: 40px square thumbnails
 - **No hero image** - This is a functional admin interface, not a marketing page
-- Placeholder system: Generic product icon for items without images
+- Placeholder system: Generic medicine icon for items without images
 
 ## Animations
 **Minimal, Purposeful Only**:

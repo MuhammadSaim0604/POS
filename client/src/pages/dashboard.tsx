@@ -49,13 +49,13 @@ export default function Dashboard() {
   const totalProfit =
     sales?.reduce((acc: number, sale: any) => {
       const saleProfit = sale.items.reduce((itemAcc: number, item: any) => {
-        const product = (products as any[])?.find(
+        const medicine = (products as any[])?.find(
           (p: any) => p.id === item.productId || p.name === item.productName,
         );
 
         const itemsPerPacket =
-          item.itemsPerPacket || product?.itemsPerPacket || 1;
-        const actualPricePerItem = product?.actualPrice || 0;
+          item.itemsPerPacket || medicine?.itemsPerPacket || 1;
+        const actualPricePerItem = medicine?.actualPrice || 0;
         const sellingPricePerItem = item.priceAtSale || 0;
 
         const packetQty = item.quantity || 0;
@@ -63,8 +63,8 @@ export default function Dashboard() {
 
         const profit = (sellingPricePerItem - actualPricePerItem) * totalItems;
         // console.log(
-        //   "product",
-        //   product,
+        //   "medicine",
+        //   medicine,
         //   "item",
         //   item,
         //   "itemsPerPacket",
@@ -337,14 +337,14 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topProducts.map((product, idx) => (
+                {topProducts.map((medicine, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between border-b border-border/40 pb-2 last:border-0 last:pb-0"
                   >
-                    <span className="text-sm font-medium">{product.name}</span>
+                    <span className="text-sm font-medium">{medicine.name}</span>
                     <span className="text-sm font-bold text-primary">
-                      {product.qty} packets sold
+                      {medicine.qty} packets sold
                     </span>
                   </div>
                 ))}
@@ -368,24 +368,24 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {lowStockProducts.slice(0, 6).map((product: any) => (
+                {lowStockProducts.slice(0, 6).map((medicine: any) => (
                   <div
-                    key={product.id}
+                    key={medicine.id}
                     className="flex items-center justify-between p-3 border rounded-lg bg-destructive/5 border-destructive/20"
                   >
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">
-                        {product.name}
+                        {medicine.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {product.article}
+                        {medicine.article}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-bold text-destructive">
-                        {product.stock} left
+                        {medicine.stock} left
                       </span>
-                      <Link href={`/restock?barcode=${product.barcode}`}>
+                      <Link href={`/restock?barcode=${medicine.barcode}`}>
                         <Button size="sm" variant="outline" className="h-8">
                           Restock
                         </Button>

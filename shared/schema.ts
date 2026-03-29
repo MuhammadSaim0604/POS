@@ -15,7 +15,7 @@ export const insertCategorySchema = categorySchema.omit({ id: true });
 // --- Products ---
 export const productSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Product name is required"),
+  name: z.string().min(1, "Medicine name is required"),
   description: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
 
@@ -147,7 +147,7 @@ export const insertSettingsSchema = settingsSchema.omit({ id: true });
 export type Category = z.infer<typeof categorySchema>;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
-export type Product = z.infer<typeof productSchema>;
+export type Medicine = z.infer<typeof productSchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 
 export type BillItem = z.infer<typeof billItemSchema>;
