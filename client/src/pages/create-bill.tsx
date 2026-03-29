@@ -110,15 +110,15 @@ export default function CreateBill() {
     if (editBill && editBillId && !isLoadingBill) {
       const billToLoad: ActiveBill = {
         id: editBillId,
-        customerName: editBill.customerName,
-        customerPhone: editBill.customerPhone,
+        customerName: editBill.customerName || "",
+        customerPhone: editBill.customerPhone || "",
         customerBusinessName: editBill.customerBusinessName || "",
         customerCity: editBill.customerCity || "",
         customerAddress: editBill.customerAddress || "",
         biltyNo: editBill.biltyNo || "",
         remarks: editBill.remarks || "",
         items: editBill.items,
-        discountOnBill: editBill.discountOnBill,
+        discountOnBill: editBill.discountOnBill || 0,
         notes: editBill.notes || "",
       };
       setActiveBills([billToLoad]);
@@ -161,7 +161,7 @@ export default function CreateBill() {
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && barcodeInput.trim()) {
       e.preventDefault();
-      const product = products?.find((p) => p.barcode === barcodeInput.trim());
+      const product = products?.find((p: Product) => p.barcode === barcodeInput.trim());
       if (product) {
         addProductToBill(product);
         setBarcodeInput("");
@@ -238,11 +238,8 @@ export default function CreateBill() {
       const newItem: BillItem = {
         productId: product.id,
         productName: product.name,
-        article: product.article || product.name,
-        color: product.color,
-        size: product.size,
-        pricePerItem: product.price,
         itemsPerPacket: product.itemsPerPacket || 1,
+        pricePerItem: product.price,
         packetQuantity: 1,
         discountPerItem: 0,
       };
@@ -395,7 +392,7 @@ export default function CreateBill() {
   };
 
   const filteredProducts = products?.filter(
-    (p) =>
+    (p: Product) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.barcode.includes(searchQuery) ||
       p.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -461,86 +458,7 @@ export default function CreateBill() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Side: Items and Info */}
                 <div className="lg:col-span-2 space-y-4">
-                  <Card>
-                    <CardHeader className="pb-4">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <User className="w-5 h-5 text-primary" />
-                        Customer Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Name *</Label>
-                        <Input
-                          placeholder="Customer Name"
-                          value={bill.customerName}
-                          onChange={(e) =>
-                            updateCurrentBill({ customerName: e.target.value })
-                          }
-                          data-testid={`input-customer-name-${bill.id}`}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Business Name</Label>
-                        <Input
-                          placeholder="Business Name"
-                          value={bill.customerBusinessName}
-                          onChange={(e) =>
-                            updateCurrentBill({
-                              customerBusinessName: e.target.value,
-                            })
-                          }
-                          data-testid={`input-customer-business-${bill.id}`}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phone *</Label>
-                        <Input
-                          placeholder="Phone Number"
-                          value={bill.customerPhone}
-                          onChange={(e) =>
-                            updateCurrentBill({ customerPhone: e.target.value })
-                          }
-                          data-testid={`input-customer-phone-${bill.id}`}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>City</Label>
-                        <Input
-                          placeholder="City"
-                          value={bill.customerCity}
-                          onChange={(e) =>
-                            updateCurrentBill({ customerCity: e.target.value })
-                          }
-                          data-testid={`input-customer-city-${bill.id}`}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Address/Adda</Label>
-                        <Input
-                          placeholder="Address or Adda"
-                          value={bill.customerAddress}
-                          onChange={(e) =>
-                            updateCurrentBill({
-                              customerAddress: e.target.value,
-                            })
-                          }
-                          data-testid={`input-customer-address-${bill.id}`}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Bilty No</Label>
-                        <Input
-                          placeholder="Bilty Number"
-                          value={bill.biltyNo}
-                          onChange={(e) =>
-                            updateCurrentBill({ biltyNo: e.target.value })
-                          }
-                          data-testid={`input-bilty-no-${bill.id}`}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  
 
                   <Card className="min-h-[400px]">
                     <CardHeader className="pb-3">
@@ -608,11 +526,7 @@ export default function CreateBill() {
                                   <p className="font-medium text-sm">
                                     {item.productName}
                                   </p>
-                                  {(item.color || item.size) && (
-                                    <p className="text-xs text-muted-foreground">
-                                      {item.color} {item.size}
-                                    </p>
-                                  )}
+                                 
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -703,6 +617,87 @@ export default function CreateBill() {
                       </Table>
                     </CardContent>
                   </Card>
+
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <User className="w-5 h-5 text-primary" />
+                        Customer Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Name *</Label>
+                        <Input
+                          placeholder="Customer Name"
+                          value={bill.customerName}
+                          onChange={(e) =>
+                            updateCurrentBill({ customerName: e.target.value })
+                          }
+                          data-testid={`input-customer-name-${bill.id}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Business Name</Label>
+                        <Input
+                          placeholder="Business Name"
+                          value={bill.customerBusinessName}
+                          onChange={(e) =>
+                            updateCurrentBill({
+                              customerBusinessName: e.target.value,
+                            })
+                          }
+                          data-testid={`input-customer-business-${bill.id}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phone *</Label>
+                        <Input
+                          placeholder="Phone Number"
+                          value={bill.customerPhone}
+                          onChange={(e) =>
+                            updateCurrentBill({ customerPhone: e.target.value })
+                          }
+                          data-testid={`input-customer-phone-${bill.id}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>City</Label>
+                        <Input
+                          placeholder="City"
+                          value={bill.customerCity}
+                          onChange={(e) =>
+                            updateCurrentBill({ customerCity: e.target.value })
+                          }
+                          data-testid={`input-customer-city-${bill.id}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address/Adda</Label>
+                        <Input
+                          placeholder="Address or Adda"
+                          value={bill.customerAddress}
+                          onChange={(e) =>
+                            updateCurrentBill({
+                              customerAddress: e.target.value,
+                            })
+                          }
+                          data-testid={`input-customer-address-${bill.id}`}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bilty No</Label>
+                        <Input
+                          placeholder="Bilty Number"
+                          value={bill.biltyNo}
+                          onChange={(e) =>
+                            updateCurrentBill({ biltyNo: e.target.value })
+                          }
+                          data-testid={`input-bilty-no-${bill.id}`}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Right Side: Totals & Actions */}
@@ -761,10 +756,7 @@ export default function CreateBill() {
                               customerAddress: currentBill.customerAddress,
                               biltyNo: currentBill.biltyNo,
                               remarks: currentBill.remarks,
-                              items: currentBill.items.map((item) => ({
-                                ...item,
-                                article: item.article || item.productName,
-                              })),
+                              items: currentBill.items.map((item) => ({ ...item })),
                               totalAmount: calculateBillTotal(),
                               discountOnBill: currentBill.discountOnBill,
                               notes: currentBill.notes,
@@ -855,7 +847,7 @@ export default function CreateBill() {
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {filteredProducts && filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product: Product) => (
                   <Card
                     key={product.id}
                     onClick={() => {
@@ -873,18 +865,7 @@ export default function CreateBill() {
                         >
                           {product.name}
                         </h3>
-                        <div className="flex flex-wrap gap-1 text-xs text-muted-foreground mt-2">
-                          {product.color && (
-                            <span className="bg-primary/10 text-primary/70 px-2 py-1 rounded font-medium">
-                              {product.color}
-                            </span>
-                          )}
-                          {product.size && (
-                            <span className="bg-primary/10 text-primary/70 px-2 py-1 rounded font-medium">
-                              {product.size}
-                            </span>
-                          )}
-                        </div>
+                        
                         <p className="text-xs text-muted-foreground mt-2">
                           Barcode:{" "}
                           <span className="font-mono">{product.barcode}</span>

@@ -57,7 +57,6 @@ import {
   type InsertProduct,
   type Product,
 } from "@shared/schema";
-import { z } from "zod";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BarcodeComponent from "react-barcode";
@@ -80,7 +79,7 @@ export default function Products() {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
 
   const filteredProducts = products?.filter(
-    (p) =>
+    (p: Product) =>
       (p.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (p.barcode || "").includes(search),
   );
@@ -120,7 +119,7 @@ export default function Products() {
     if (selectedProducts.size === filteredProducts?.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(filteredProducts?.map((p) => p.id) || []));
+      setSelectedProducts(new Set(filteredProducts?.map((p: Product) => p.id) || []));
     }
   };
 
@@ -247,7 +246,7 @@ export default function Products() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts?.map((product) => {
+                {filteredProducts?.map((product: Product) => {
                   const status = getStockStatus(product);
                   return (
                     <TableRow
@@ -270,12 +269,6 @@ export default function Products() {
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {product.barcode || "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {product.color || "-"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {product.size || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {product.sku || "-"}
@@ -340,7 +333,7 @@ export default function Products() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-            {filteredProducts?.map((product) => {
+            {filteredProducts?.map((product: Product) => {
               const status = getStockStatus(product);
               return (
                 <Card
@@ -411,14 +404,6 @@ export default function Products() {
                         >
                           {product.stock || "-"}
                         </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Color</p>
-                        <p className="font-semibold">{product.color || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Size</p>
-                        <p className="font-semibold">{product.size || "-"}</p>
                       </div>
                     </div>
 
@@ -498,9 +483,9 @@ export default function Products() {
               }}
             >
               {(
-                filteredProducts?.filter((p) => selectedProducts.has(p.id)) ||
+                filteredProducts?.filter((p: Product) => selectedProducts.has(p.id)) ||
                 []
-              ).map((product) => (
+              ).map((product: Product) => (
                 <div
                   key={product.id}
                   style={{
@@ -580,20 +565,6 @@ export default function Products() {
   );
 }
 
-interface Variation {
-  id: string;
-  color: string;
-  size: string;
-  barcode: string;
-  actualPrice: number;
-  pricePerItem: number;
-  itemsPerPacket: number;
-  quantity: number;
-  sku: string;
-  image: string;
-  lowStockThreshold: number;
-}
-
 function ProductForm({
   open,
   onOpenChange,
@@ -618,9 +589,7 @@ function ProductForm({
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [generatedVariations, setGeneratedVariations] = useState<Variation[]>(
-    [],
-  );
+
 
   const form = useForm<InsertProduct>({
     resolver: zodResolver(insertProductSchema),
@@ -629,28 +598,25 @@ function ProductForm({
           name: initialData.name,
           description: initialData.description || "",
           barcode: initialData.barcode,
-          article: initialData.article || "",
+         
           price: initialData.price,
           actualPrice: initialData.actualPrice || 0,
           stock: initialData.stock,
           categoryId: initialData.categoryId,
           lowStockThreshold: initialData.lowStockThreshold || 10,
           sku: initialData.sku || "",
-          unitType: initialData.unitType || "single",
           itemsPerPacket: initialData.itemsPerPacket || 1,
-          color: initialData.color || "",
-          size: initialData.size || "",
+        
           supplierName: initialData.supplierName || "",
           supplierPhone: initialData.supplierPhone || "",
           supplierAddress: initialData.supplierAddress || "",
           image: initialData.image || "",
-          isVariation: initialData.isVariation || false,
-          parentProductId: initialData.parentProductId || undefined,
+        
         }
       : {
           name: "",
           description: "",
-          article: "",
+      
           barcode: "",
           price: 0,
           actualPrice: 0,
@@ -658,15 +624,15 @@ function ProductForm({
           categoryId: "",
           lowStockThreshold: 10,
           sku: "",
-          unitType: "single",
+        
           itemsPerPacket: 1,
-          color: "",
-          size: "",
+         
+          
           supplierName: "",
           supplierPhone: "",
           supplierAddress: "",
           image: "",
-          isVariation: false,
+        
         },
   });
 
@@ -1028,42 +994,12 @@ function ProductForm({
       if (initialData) {
         await updateProduct.mutateAsync({ id: initialData.id, ...data });
         toast({ title: "Product updated successfully" });
-      } else if (generatedVariations.length > 0) {
-        let successCount = 0;
-        for (const variation of generatedVariations) {
-          try {
-            const productData: InsertProduct = {
-              ...data,
-              article: data.article || "",
-              color: variation.color,
-              size: variation.size,
-              barcode: variation.barcode,
-              actualPrice: variation.actualPrice || 0,
-              price: variation.pricePerItem,
-              itemsPerPacket: variation.itemsPerPacket,
-              stock: variation.quantity,
-              sku: variation.sku,
-              image: variation.image || data.image || "",
-              lowStockThreshold: variation.lowStockThreshold,
-              isVariation: true,
-            };
-            await createProduct.mutateAsync(productData);
-            successCount++;
-          } catch (error) {
-            console.error(`Failed to create variation ${variation.id}`, error);
-          }
-        }
-        toast({
-          title: `${successCount} variations created`,
-          description: `Successfully created ${successCount} of ${generatedVariations.length} product variations`,
-        });
       } else {
         await createProduct.mutateAsync(data);
         toast({ title: "Product created successfully" });
       }
       onOpenChange(false);
       form.reset();
-      setGeneratedVariations([]);
     } catch (error) {
       console.error("Submit error:", error);
       toast({
@@ -1263,15 +1199,7 @@ function ProductForm({
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="article">Article</Label>
-                  <Input
-                    id="article"
-                    placeholder="Article Number/Name"
-                    {...form.register("article")}
-                    data-testid="input-product-article"
-                  />
-                </div>
+                
                 <div className="grid gap-2">
                   <Label htmlFor="barcode">Barcode *</Label>
                   <div className="flex gap-2">
@@ -1333,7 +1261,7 @@ function ProductForm({
                     data-testid="input-product-sku"
                   />
                 </div>
-
+                
                 <div className="grid gap-2">
                   <Label htmlFor="itemsPerPacket">Items Per Packet</Label>
                   <Input
@@ -1349,30 +1277,6 @@ function ProductForm({
               </div>
             </div>
 
-            {/* Product Details (Variation fields for standalone) */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-sm">Product Details</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Input
-                    id="color"
-                    placeholder="e.g., Red, Blue"
-                    {...form.register("color")}
-                    data-testid="input-product-color"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="size">Size</Label>
-                  <Input
-                    id="size"
-                    placeholder="e.g., XL, 42"
-                    {...form.register("size")}
-                    data-testid="input-product-size"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Supplier Information - Always Visible */}
             <div className="space-y-2">
@@ -1410,13 +1314,7 @@ function ProductForm({
               </div>
             </div>
 
-            {!initialData && (
-              <VariationGenerator
-                onVariationsGenerated={setGeneratedVariations}
-                productName={form.getValues("name")}
-              />
-            )}
-
+        
             {/* Form Actions */}
             <div className="flex justify-end gap-2 pt-4">
               <Button
@@ -1424,7 +1322,6 @@ function ProductForm({
                 variant="outline"
                 onClick={() => {
                   onOpenChange(false);
-                  setGeneratedVariations([]);
                 }}
                 data-testid="button-cancel-form"
               >
@@ -1435,11 +1332,7 @@ function ProductForm({
                 disabled={createProduct.isPending || updateProduct.isPending}
                 data-testid="button-submit-form"
               >
-                {initialData
-                  ? "Save Changes"
-                  : generatedVariations.length > 0
-                    ? `Create ${generatedVariations.length} Products`
-                    : "Create Product"}
+                Save Medicine
               </Button>
             </div>
           </form>

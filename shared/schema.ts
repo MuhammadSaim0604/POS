@@ -12,38 +12,12 @@ export const categorySchema = z.object({
 
 export const insertCategorySchema = categorySchema.omit({ id: true });
 
-// --- Product Variations (Each variation is stored as a separate product in DB) ---
-export const productVariationSchema = z.object({
-  color: z.string().optional(),
-  size: z.string().optional(),
-  image: z.string().optional(),
-  barcode: z.string().min(12, "Valid EAN-13 barcode required"),
-  pricePerItem: z.number().min(0, "Price must be positive"),
-  quantityInStock: z.number().int().min(0, "Quantity cannot be negative"),
-});
-
 // --- Products ---
 export const productSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
-
-  // Variation/Parent Product Fields
-  isVariation: z.boolean().default(false), // True if this is a variation of another product
-  parentProductId: z.string().optional(), // Reference to parent product if this is a variation
-
-  // Packet/Box Information
-  unitType: z.enum(["single", "packet"]).default("single"), // Single item or packet/box
-  itemsPerPacket: z
-    .number()
-    .int()
-    .min(1, "Items per packet must be at least 1")
-    .default(1), // How many items in one packet
-
-  // Variation Details (when unitType is packet)
-  color: z.string().optional(),
-  size: z.string().optional(),
 
   // Pricing & Stock
   price: z.number().min(0, "Price must be positive").default(0), // Price per item (not per packet)
@@ -54,13 +28,20 @@ export const productSchema = z.object({
     .min(0, "Threshold must be non-negative")
     .default(10),
 
+  itemsPerPacket: z
+    .number()
+    .int()
+    .min(1, "Items per packet must be at least 1")
+    .default(1), // How many items in one packet
+
+  // Variation Details (when unitType is packet)
+  color: z.string().optional(),
+  size: z.string().optional(),
   // Supplier Information
   supplierName: z.string().optional().default(""),
   supplierPhone: z.string().optional().default(""),
   supplierAddress: z.string().optional().default(""),
 
-  // Additional fields
-  article: z.string().optional().default(""),
   sku: z.string().optional().default(""),
   image: z.string().optional().default(""),
   barcode: z
@@ -75,10 +56,6 @@ const baseInsertProductSchema = productSchema.omit({ id: true });
 
 export const insertProductSchema = baseInsertProductSchema.refine(
   (data) => {
-    // If it's a variation product, require at least color or size
-    if (data.isVariation) {
-      return data.color || data.size;
-    }
     return true;
   },
   {
@@ -93,9 +70,6 @@ export const partialProductSchema = baseInsertProductSchema.partial();
 export const billItemSchema = z.object({
   productId: z.string(),
   productName: z.string(),
-  article: z.string().optional(),
-  color: z.string().optional(),
-  size: z.string().optional(),
   pricePerItem: z.number().min(0),
   itemsPerPacket: z.number().int().min(1),
   packetQuantity: z.number().int().min(1),

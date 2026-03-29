@@ -23,24 +23,12 @@ const CategorySchema = new Schema({
 const ProductSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String },
-  article: { type: String, default: "" },
   barcode: { type: String, required: true, unique: true },
   price: { type: Number, required: true, min: 0 },
   stock: { type: Number, required: true, default: 0 },
   categoryId: { type: Schema.Types.ObjectId, ref: "Category", required: true },
   lowStockThreshold: { type: Number, default: 10, min: 0 },
-
-  // Variation Support
-  isVariation: { type: Boolean, default: false },
-  parentProductId: { type: Schema.Types.ObjectId, ref: "Product" },
-
-  // Packet/Box Information
-  unitType: { type: String, enum: ["single", "packet"], default: "single" },
   itemsPerPacket: { type: Number, default: 1, min: 1 },
-
-  // Variation Details
-  color: { type: String },
-  size: { type: String },
 
   // Supplier Information
   supplierName: { type: String },
@@ -50,7 +38,6 @@ const ProductSchema = new Schema({
   // Additional fields
   sku: { type: String },
   image: { type: String },
-  image: { type: String },
   actualPrice: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
@@ -59,8 +46,6 @@ const ProductSchema = new Schema({
 const BillItemSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
   productName: { type: String, required: true },
-  color: { type: String },
-  size: { type: String },
   pricePerItem: { type: Number, required: true, min: 0 },
   itemsPerPacket: { type: Number, required: true, min: 1 },
   packetQuantity: { type: Number, required: true, min: 1 },
@@ -219,7 +204,7 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         categoryId: obj.categoryId.toString(),
-        parentProductId: obj.parentProductId?.toString(),
+
       } as unknown as Product;
     });
   }
@@ -232,7 +217,6 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-      parentProductId: obj.parentProductId?.toString(),
     } as unknown as Product;
   }
 
@@ -244,7 +228,6 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-      parentProductId: obj.parentProductId?.toString(),
     } as unknown as Product;
   }
 
@@ -255,7 +238,6 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-      parentProductId: obj.parentProductId?.toString(),
     } as unknown as Product;
   }
 
@@ -272,7 +254,6 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       categoryId: obj.categoryId.toString(),
-      parentProductId: obj.parentProductId?.toString(),
     } as unknown as Product;
   }
 
@@ -296,7 +277,6 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         categoryId: obj.categoryId.toString(),
-        parentProductId: obj.parentProductId?.toString(),
       } as unknown as Product;
     });
   }
