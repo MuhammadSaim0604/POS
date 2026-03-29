@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = "mongodb://localhost:27017/mongo-pos"; // Replace with your MongoDB connection string
+const MONGODB_URI: string = process.env.MONGODB_URI!; // Replace with your MongoDB connection string
 
 export async function connectDB() {
 
