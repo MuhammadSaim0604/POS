@@ -31,7 +31,7 @@
 - Assign to category
 
 ### Read Medicine
-- List all products with pagination
+- List all medicines with pagination
 - Search by medicine name or barcode
 - Filter by category
 - View stock quantities
@@ -55,7 +55,7 @@
 
 ### Category Management
 - Simple flat structure (no complex hierarchy)
-- Used only for grouping products
+- Used only for grouping medicines
 - Examples: Grocery, Beverages, Electronics
 - Each medicine belongs to exactly one category
 
@@ -63,7 +63,7 @@
 - Create category
 - Edit category name
 - Delete category
-- Filter products by category
+- Filter medicines by category
 
 ---
 
@@ -73,13 +73,13 @@
 - Standard EAN-13 format for medicine identification
 - Print-ready PDF generation
 - Barcode preview in medicine list/card view
-- Multiple barcode printing (selected products)
+- Multiple barcode printing (selected medicines)
 - Label printing optimization
 - CODE128 format support in UI
 
 ### Barcode Operations
 - Generate individual barcode
-- Generate batch PDF for multiple products
+- Generate batch PDF for multiple medicines
 - Display barcode preview
 - Print to PDF functionality
 - Attach barcode to medicine
@@ -105,7 +105,7 @@
 
 ## Database Schema Summary
 
-### Products Collection
+### Medicines Collection
 ```
 {
   id: string (unique),
@@ -138,7 +138,7 @@
 ```
 {
   id: string,
-  productId: string,
+  medicineId: string,
   quantity: number,
   type: "purchase" | "restock" | "adjustment",
   supplierName: string,
@@ -176,8 +176,8 @@
 - Edit and Delete buttons
 
 ### Bulk Actions
-- Select/Deselect all products
-- Generate barcodes PDF for selected products
+- Select/Deselect all medicines
+- Generate barcodes PDF for selected medicines
 - Barcode print modal (2-column grid layout)
 
 ### Search & Filter
@@ -194,31 +194,31 @@
 - Duplicate scan detection (increment quantity)
 - Out-of-stock validation
 
-### Products / Inventory
-- CRUD operations for products
+### Medicines / Inventory
+- CRUD operations for medicines
 - Stock quantity management
 - Supplier information display
 - Barcode generation and printing
 
 ### Purchase / Restock
-- Add stock to existing products
+- Add stock to existing medicines
 - Optional supplier selection
 - Restock history tracking
 - Real-time stock updates
 
 ### Sales / Invoice History
-- Invoice records linked to products
+- Invoice records linked to medicines
 - Medicine-based search
 - Sales history analytics
 
 ### Analytics / Reports
-- Best-selling products report
+- Best-selling medicines report
 - Category-based sales analysis
 - Stock movement reports
 - Revenue and profit analytics
 
 ### Low Stock Alerts
-- Display products below threshold
+- Display medicines below threshold
 - Quick access to restock page
 - Alert notifications
 
@@ -226,7 +226,7 @@
 
 ## Key Points
 - Single-user, fully offline system
-- Products linked to categories (1:N relationship)
+- Medicines linked to categories (1:N relationship)
 - Optional supplier information for each medicine
 - EAN-13 barcode standard
 - Print-ready barcode PDFs

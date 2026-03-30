@@ -1,6 +1,6 @@
 import {
   type Medicine,
-  type InsertProduct,
+  type InsertMedicine,
   type Category,
   type InsertCategory,
   type Sale,
@@ -20,42 +20,43 @@ const CategorySchema = new Schema({
   name: { type: String, required: true },
 });
 
-const ProductSchema = new Schema({
+const MedicineSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String },
-  barcode: { type: String, required: true, unique: true },
+  barcode: { type: String, unique: true, sparse: true },
   price: { type: Number, required: true, min: 0 },
-  stock: { type: Number, required: true, default: 0 },
-  categoryId: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+  stock: { type: Number, required: true, default: 0 },          // full packets
+  totalItemsInStock: { type: Number, default: 0, min: 0 },      // total individual items
+  categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
   lowStockThreshold: { type: Number, default: 10, min: 0 },
   itemsPerPacket: { type: Number, default: 1, min: 1 },
 
-  // Supplier Information
   supplierName: { type: String },
   supplierPhone: { type: String },
   supplierAddress: { type: String },
 
-  // Additional fields
   sku: { type: String },
   image: { type: String },
   actualPrice: { type: Number, default: 0 },
+  expiryDate: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
+// Bill items: qty = total individual items
 const BillItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
-  productName: { type: String, required: true },
+  medicineId: { type: Schema.Types.ObjectId, ref: "Medicine", required: false, default: null },
+  medicineName: { type: String, required: true },
   pricePerItem: { type: Number, required: true, min: 0 },
   itemsPerPacket: { type: Number, required: true, min: 1 },
-  packetQuantity: { type: Number, required: true, min: 1 },
+  qty: { type: Number, required: true, min: 1 },            // total individual items
   discountPerItem: { type: Number, default: 0, min: 0 },
 });
 
 const BillSchema = new Schema({
   billNumber: { type: String, required: true, unique: true },
-  customerName: { type: String, required: true },
-  customerPhone: { type: String, required: true },
+  customerName: { type: String, default: "" },
+  customerPhone: { type: String, default: "" },
   customerBusinessName: { type: String },
   customerCity: { type: String },
   customerAddress: { type: String },
@@ -76,7 +77,7 @@ const BillSchema = new Schema({
 });
 
 const SaleItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
+  medicineId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
   name: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
   priceAtSale: { type: Number, required: true },
@@ -89,10 +90,14 @@ const SaleSchema = new Schema({
 });
 
 const RestockSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
+  medicineId: { type: Schema.Types.ObjectId, ref: "Medicine", required: true },
   quantity: { type: Number, required: true, min: 1 },
+  itemsPerPacket: { type: Number, min: 1 },
   date: { type: Date, default: Date.now },
   supplier: { type: String },
+  price: { type: Number, min: 0 },
+  actualPrice: { type: Number, min: 0 },
+  expiryDate: { type: Date },
 });
 
 const SettingsSchema = new Schema({
@@ -104,77 +109,155 @@ const SettingsSchema = new Schema({
   },
   printAutomatically: { type: Boolean, default: true },
   invoiceFooter: { type: String, default: "Thank you for shopping with us!" },
+  shortcutSearchMedicines: { type: String, default: "Ctrl+Z" },
+  shortcutScanner: { type: String, default: "Ctrl+S" },
+  shortcutCustomItem: { type: String, default: "Ctrl+C" },
+  shortcutNewBill: { type: String, default: "Ctrl+Space" },
+  shortcutCreateBill: { type: String, default: "Ctrl+Enter" },
+  shortcutDiscount: { type: String, default: "Ctrl+D" },
+  shortcutResetBill: { type: String, default: "Ctrl+R" },
+  shortcutDraftBill: { type: String, default: "Ctrl+Shift+S" },
+  shortcutGoToCreateBill: { type: String, default: "Ctrl+B" },
+});
+
+// medicines_db: pre-loaded pharmaceutical medicines directory
+const MedicinesDbSchema = new Schema({
+  name: { type: String, required: true },
+  genericName: { type: String, default: "" },
+  category: { type: String, default: "" },
+  manufacturer: { type: String, default: "" },
+  type: { type: String, default: "" }, // tablet, syrup, injection, etc.
+  description: { type: String, default: "" },
+  isActivated: { type: Boolean, default: false },
+  activatedMedicineId: { type: String, default: null },
 });
 
 // --- Mongoose Models ---
 const CategoryModel = mongoose.model("Category", CategorySchema);
-const ProductModel = mongoose.model("Medicine", ProductSchema);
+const MedicineModel = mongoose.model("Medicine", MedicineSchema);
+const MedicinesDbModel = mongoose.model("MedicinesDb", MedicinesDbSchema, "medicines_db");
 const BillModel = mongoose.model("Bill", BillSchema);
 const SaleModel = mongoose.model("Sale", SaleSchema);
 const RestockModel = mongoose.model("Restock", RestockSchema);
 const SettingsModel = mongoose.model("Settings", SettingsSchema);
 
 // --- Storage Interface ---
-
 export interface IStorage {
-  // Categories
   getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
   deleteCategory(id: string): Promise<void>;
 
-  // Products
-  getProducts(): Promise<Medicine[]>;
-  getProduct(id: string): Promise<Medicine | undefined>;
-  getProductByBarcode(barcode: string): Promise<Medicine | undefined>;
-  createProduct(medicine: InsertProduct): Promise<Medicine>;
-  updateProduct(
-    id: string,
-    medicine: Partial<InsertProduct>,
-  ): Promise<Medicine | undefined>;
-  deleteProduct(id: string): Promise<void>;
-  updateProductStock(id: string, quantityChange: number): Promise<void>;
-  getLowStockProducts(): Promise<Medicine[]>;
+  getMedicines(): Promise<Medicine[]>;
+  getMedicine(id: string): Promise<Medicine | undefined>;
+  getMedicineByBarcode(barcode: string): Promise<Medicine | undefined>;
+  createMedicine(medicine: InsertMedicine): Promise<Medicine>;
+  updateMedicine(id: string, medicine: Partial<InsertMedicine>): Promise<Medicine | undefined>;
+  deleteMedicine(id: string): Promise<void>;
+  updateMedicineStock(id: string, quantityChange: number): Promise<void>;
+  getLowStockMedicines(): Promise<Medicine[]>;
 
-  // Bills
   getBills(): Promise<Bill[]>;
   getBill(id: string): Promise<Bill | undefined>;
   createBill(bill: InsertBill): Promise<Bill>;
   updateBill(id: string, bill: Partial<InsertBill>): Promise<Bill | undefined>;
   deleteBill(id: string): Promise<void>;
-  updateBillStatus(
-    id: string,
-    status: "draft" | "completed" | "printed",
-  ): Promise<void>;
+  updateBillStatus(id: string, status: "draft" | "completed" | "printed"): Promise<void>;
 
-  // Sales
   getSales(): Promise<Sale[]>;
   createSale(sale: InsertSale): Promise<Sale>;
 
-  // Restock
   getRestocks(): Promise<Restock[]>;
   createRestock(restock: InsertRestock): Promise<Restock>;
 
-  // Settings
   getSettings(): Promise<Settings>;
   updateSettings(settings: Partial<InsertSettings>): Promise<Settings>;
+
+  // medicines_db
+  searchMedicinesDb(search?: string): Promise<any[]>;
+  activateMedicineInDb(id: string, medicineId: string): Promise<void>;
+  deactivateMedicineInDb(id: string): Promise<void>;
+  getMedicinesDbCount(): Promise<number>;
+}
+
+// --- Helpers ---
+
+function safeMedicineIdToString(id: any): string {
+  if (!id) return "";
+  try { return id.toString(); } catch { return ""; }
+}
+
+function mapBillItems(items: any[]): any[] {
+  return items.map((i: any) => ({
+    ...i,
+    _id: undefined,
+    medicineId: safeMedicineIdToString(i.medicineId),
+    qty: i.qty ?? (i.packetQuantity ?? 1), // backward compat with old data
+  }));
+}
+
+function preprocessBillItems(items: any[]): any[] {
+  return items.map((item: any) => ({
+    ...item,
+    medicineId: item.medicineId && item.medicineId !== "" ? item.medicineId : undefined,
+    qty: item.qty ?? 1,
+  }));
+}
+
+function preprocessMedicine(medicine: any): any {
+  const processed = { ...medicine };
+  // Convert empty categoryId to undefined so Mongoose doesn't fail casting
+  if (!processed.categoryId || processed.categoryId === "") {
+    delete processed.categoryId;
+  }
+  // Convert empty barcode to undefined for sparse unique index
+  if (!processed.barcode || processed.barcode === "") {
+    delete processed.barcode;
+  }
+  return processed;
+}
+
+function mapMedicine(obj: any): Medicine {
+  const itemsPerPacket = obj.itemsPerPacket || 1;
+  const stock = obj.stock || 0;
+  // If totalItemsInStock is not set or 0, calculate from stock * itemsPerPacket
+  const totalItemsInStock = obj.totalItemsInStock > 0
+    ? obj.totalItemsInStock
+    : stock * itemsPerPacket;
+  return {
+    ...obj,
+    id: obj._id.toString(),
+    categoryId: obj.categoryId ? obj.categoryId.toString() : "",
+    totalItemsInStock,
+    itemsPerPacket,
+    stock,
+  } as unknown as Medicine;
 }
 
 export class MongoStorage implements IStorage {
-  // Helper to map _id to id
   private mapDoc<T>(doc: any): T {
     const { _id, __v, ...rest } = doc.toObject();
     return { id: _id.toString(), ...rest } as T;
   }
 
+  // Deduct qty items from medicine's totalItemsInStock, recalculate full packets in stock
   private async deductStockFromBillItems(
     items: any[],
     session: mongoose.ClientSession,
   ): Promise<void> {
     for (const item of items) {
-      // Deduct packets from stock (packetQuantity = number of packets sold)
-      await ProductModel.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: -item.packetQuantity } },
+      if (!item.medicineId) continue;
+      const qty = item.qty ?? 1;
+      const medicine = await MedicineModel.findById(item.medicineId).session(session);
+      if (!medicine) continue;
+      const itemsPerPacket = medicine.itemsPerPacket || 1;
+      const currentTotal = medicine.totalItemsInStock > 0
+        ? medicine.totalItemsInStock
+        : (medicine.stock * itemsPerPacket);
+      const newTotal = Math.max(0, currentTotal - qty);
+      const newStock = Math.floor(newTotal / itemsPerPacket);
+      await MedicineModel.findByIdAndUpdate(
+        item.medicineId,
+        { totalItemsInStock: newTotal, stock: newStock },
         { session },
       );
     }
@@ -195,90 +278,80 @@ export class MongoStorage implements IStorage {
     await CategoryModel.findByIdAndDelete(id);
   }
 
-  // Products
-  async getProducts(): Promise<Medicine[]> {
-    const products = await ProductModel.find();
-    return products.map((p) => {
-      const obj = p.toObject();
-      return {
-        ...obj,
-        id: obj._id.toString(),
-        categoryId: obj.categoryId.toString(),
-
-      } as unknown as Medicine;
-    });
+  // Medicines
+  async getMedicines(): Promise<Medicine[]> {
+    const medicines = await MedicineModel.find();
+    return medicines.map((p) => mapMedicine(p.toObject()));
   }
 
-  async getProduct(id: string): Promise<Medicine | undefined> {
-    const p = await ProductModel.findById(id);
+  async getMedicine(id: string): Promise<Medicine | undefined> {
+    const p = await MedicineModel.findById(id);
     if (!p) return undefined;
-    const obj = p.toObject();
-    return {
-      ...obj,
-      id: obj._id.toString(),
-      categoryId: obj.categoryId.toString(),
-    } as unknown as Medicine;
+    return mapMedicine(p.toObject());
   }
 
-  async getProductByBarcode(barcode: string): Promise<Medicine | undefined> {
-    const p = await ProductModel.findOne({ barcode });
+  async getMedicineByBarcode(barcode: string): Promise<Medicine | undefined> {
+    const p = await MedicineModel.findOne({ barcode });
     if (!p) return undefined;
-    const obj = p.toObject();
-    return {
-      ...obj,
-      id: obj._id.toString(),
-      categoryId: obj.categoryId.toString(),
-    } as unknown as Medicine;
+    return mapMedicine(p.toObject());
   }
 
-  async createProduct(medicine: InsertProduct): Promise<Medicine> {
-    const newProduct = await ProductModel.create(medicine);
-    const obj = newProduct.toObject();
-    return {
-      ...obj,
-      id: obj._id.toString(),
-      categoryId: obj.categoryId.toString(),
-    } as unknown as Medicine;
+  async createMedicine(medicine: InsertMedicine): Promise<Medicine> {
+    const processed = preprocessMedicine(medicine);
+    const itemsPerPacket = processed.itemsPerPacket || 1;
+    const stock = processed.stock || 0;
+    // Auto-calculate totalItemsInStock
+    if (!processed.totalItemsInStock || processed.totalItemsInStock === 0) {
+      processed.totalItemsInStock = stock * itemsPerPacket;
+    }
+    const newMedicine = await MedicineModel.create(processed);
+    return mapMedicine(newMedicine.toObject());
   }
 
-  async updateProduct(
-    id: string,
-    updates: Partial<InsertProduct>,
-  ): Promise<Medicine | undefined> {
-    const updated = await ProductModel.findByIdAndUpdate(id, updates, {
-      new: true,
-    });
+  async updateMedicine(id: string, updates: Partial<InsertMedicine>): Promise<Medicine | undefined> {
+    const processed = preprocessMedicine(updates);
+    // If stock or itemsPerPacket is being updated, recalculate totalItemsInStock
+    if ((processed.stock !== undefined || processed.itemsPerPacket !== undefined)) {
+      const current = await MedicineModel.findById(id);
+      if (current) {
+        const newStock = processed.stock ?? current.stock;
+        const newIPP = processed.itemsPerPacket ?? current.itemsPerPacket ?? 1;
+        // Only recalculate if not explicitly provided
+        if (processed.totalItemsInStock === undefined || processed.totalItemsInStock === 0) {
+          processed.totalItemsInStock = newStock * newIPP;
+        }
+      }
+    }
+    const updated = await MedicineModel.findByIdAndUpdate(id, processed, { new: true });
     if (!updated) return undefined;
-    const obj = updated.toObject();
-    return {
-      ...obj,
-      id: obj._id.toString(),
-      categoryId: obj.categoryId.toString(),
-    } as unknown as Medicine;
+    return mapMedicine(updated.toObject());
   }
 
-  async deleteProduct(id: string): Promise<void> {
-    await ProductModel.findByIdAndDelete(id);
+  async deleteMedicine(id: string): Promise<void> {
+    await MedicineModel.findByIdAndDelete(id);
   }
 
-  async updateProductStock(id: string, quantityChange: number): Promise<void> {
-    await ProductModel.findByIdAndUpdate(id, {
-      $inc: { stock: quantityChange },
+  async updateMedicineStock(id: string, quantityChange: number): Promise<void> {
+    // quantityChange = number of packets
+    const medicine = await MedicineModel.findById(id);
+    if (!medicine) return;
+    const itemsPerPacket = medicine.itemsPerPacket || 1;
+    const currentTotal = medicine.totalItemsInStock > 0
+      ? medicine.totalItemsInStock
+      : (medicine.stock * itemsPerPacket);
+    const newTotal = Math.max(0, currentTotal + quantityChange * itemsPerPacket);
+    const newStock = Math.floor(newTotal / itemsPerPacket);
+    await MedicineModel.findByIdAndUpdate(id, {
+      totalItemsInStock: newTotal,
+      stock: newStock,
     });
   }
 
-  async getLowStockProducts(): Promise<Medicine[]> {
-    const products = await ProductModel.find({
+  async getLowStockMedicines(): Promise<Medicine[]> {
+    const medicines = await MedicineModel.find({
       $expr: { $lte: ["$stock", "$lowStockThreshold"] },
     });
-    return products.map((p) => {
-      const obj = p.toObject();
-      return {
-        ...obj,
-        id: obj._id.toString(),
-        categoryId: obj.categoryId.toString(),
-      } as unknown as Medicine;
-    });
+    return medicines.map((p) => mapMedicine(p.toObject()));
   }
 
   // Bills
@@ -290,10 +363,7 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         date: obj.date.toISOString(),
-        items: obj.items.map((i: any) => ({
-          ...i,
-          productId: i.productId.toString(),
-        })),
+        items: mapBillItems(obj.items),
       } as unknown as Bill;
     });
   }
@@ -306,10 +376,7 @@ export class MongoStorage implements IStorage {
       ...obj,
       id: obj._id.toString(),
       date: obj.date.toISOString(),
-      items: obj.items.map((i: any) => ({
-        ...i,
-        productId: i.productId.toString(),
-      })),
+      items: mapBillItems(obj.items),
     } as unknown as Bill;
   }
 
@@ -318,22 +385,21 @@ export class MongoStorage implements IStorage {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      if (bill.status === "completed") {
-        await this.deductStockFromBillItems(bill.items, session);
+      const processedItems = preprocessBillItems(bill.items);
+      if (bill.status === "completed" || bill.status === "printed") {
+        await this.deductStockFromBillItems(processedItems, session);
       }
-      const newBill = await BillModel.create([{ ...bill, billNumber }], {
-        session,
-      });
+      const newBill = await BillModel.create(
+        [{ ...bill, billNumber, items: processedItems }],
+        { session },
+      );
       await session.commitTransaction();
       const obj = newBill[0].toObject();
       return {
         ...obj,
         id: obj._id.toString(),
         date: obj.date.toISOString(),
-        items: obj.items.map((i: any) => ({
-          ...i,
-          productId: i.productId.toString(),
-        })),
+        items: mapBillItems(obj.items),
       } as unknown as Bill;
     } catch (error) {
       await session.abortTransaction();
@@ -343,30 +409,29 @@ export class MongoStorage implements IStorage {
     }
   }
 
-  async updateBill(
-    id: string,
-    updates: Partial<InsertBill>,
-  ): Promise<Bill | undefined> {
+  async updateBill(id: string, updates: Partial<InsertBill>): Promise<Bill | undefined> {
     const bill = await BillModel.findById(id);
     if (!bill) return undefined;
 
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      // If status is changing to "completed" and it wasn't already completed, deduct stock
-      if (updates.status === "completed" && bill.status !== "completed") {
-        const itemsToDeduct = updates.items || bill.items;
+      const processedItems = updates.items ? preprocessBillItems(updates.items) : undefined;
+      const processedUpdates = processedItems ? { ...updates, items: processedItems } : updates;
+
+      if (
+        (updates.status === "completed" || updates.status === "printed") &&
+        bill.status !== "completed" && bill.status !== "printed"
+      ) {
+        const itemsToDeduct = processedItems || bill.items;
         await this.deductStockFromBillItems(itemsToDeduct, session);
       }
 
-      const updated = await BillModel.findByIdAndUpdate(id, updates, {
+      const updated = await BillModel.findByIdAndUpdate(id, processedUpdates, {
         new: true,
         session,
       });
-      if (!updated) {
-        await session.abortTransaction();
-        return undefined;
-      }
+      if (!updated) { await session.abortTransaction(); return undefined; }
 
       await session.commitTransaction();
       const obj = updated.toObject();
@@ -374,10 +439,7 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         date: obj.date.toISOString(),
-        items: obj.items.map((i: any) => ({
-          ...i,
-          productId: i.productId.toString(),
-        })),
+        items: mapBillItems(obj.items),
       } as unknown as Bill;
     } catch (error) {
       await session.abortTransaction();
@@ -391,18 +453,17 @@ export class MongoStorage implements IStorage {
     await BillModel.findByIdAndDelete(id);
   }
 
-  async updateBillStatus(
-    id: string,
-    status: "draft" | "completed" | "printed",
-  ): Promise<void> {
+  async updateBillStatus(id: string, status: "draft" | "completed" | "printed"): Promise<void> {
     const bill = await BillModel.findById(id);
     if (!bill) return;
 
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      // If status is changing to "completed" and it wasn't already completed, deduct stock
-      if (status === "completed" && bill.status !== "completed") {
+      if (
+        (status === "completed" || status === "printed") &&
+        bill.status !== "completed" && bill.status !== "printed"
+      ) {
         await this.deductStockFromBillItems(bill.items, session);
       }
       await BillModel.findByIdAndUpdate(id, { status }, { session });
@@ -415,23 +476,23 @@ export class MongoStorage implements IStorage {
     }
   }
 
-  // Sales (Returns bills as sales)
+  // Sales
   async getSales(): Promise<Sale[]> {
-    const bills = await BillModel.find({ status: "completed" }).sort({
-      date: -1,
-    });
+    const bills = await BillModel.find({ status: { $in: ["completed", "printed"] } }).sort({ date: -1 });
     return bills.map((b) => {
       const obj = b.toObject();
       return {
         id: obj._id.toString(),
         date: obj.date.toISOString(),
         total: obj.totalAmount,
-        items: obj.items.map((i: any) => ({
-          productId: i.productId.toString(),
-          name: i.productName,
-          quantity: i.packetQuantity,
-          priceAtSale: i.pricePerItem,
-        })),
+        items: obj.items
+          .filter((i: any) => i.medicineId)
+          .map((i: any) => ({
+            medicineId: safeMedicineIdToString(i.medicineId),
+            name: i.medicineName,
+            quantity: i.qty ?? 1,
+            priceAtSale: i.pricePerItem,
+          })),
       } as unknown as Sale;
     });
   }
@@ -441,15 +502,13 @@ export class MongoStorage implements IStorage {
     session.startTransaction();
     try {
       const newSale = await SaleModel.create([sale], { session });
-
       for (const item of sale.items) {
-        await ProductModel.findByIdAndUpdate(
-          item.productId,
+        await MedicineModel.findByIdAndUpdate(
+          item.medicineId,
           { $inc: { stock: -item.quantity } },
           { session },
         );
       }
-
       await session.commitTransaction();
       const obj = newSale[0].toObject();
       return {
@@ -458,7 +517,7 @@ export class MongoStorage implements IStorage {
         date: obj.date.toISOString(),
         items: obj.items.map((i: any) => ({
           ...i,
-          productId: i.productId.toString(),
+          medicineId: safeMedicineIdToString(i.medicineId),
         })),
       } as unknown as Sale;
     } catch (error) {
@@ -478,7 +537,7 @@ export class MongoStorage implements IStorage {
         ...obj,
         id: obj._id.toString(),
         date: obj.date.toISOString(),
-        productId: obj.productId.toString(),
+        medicineId: obj.medicineId.toString(),
       } as unknown as Restock;
     });
   }
@@ -488,20 +547,57 @@ export class MongoStorage implements IStorage {
     session.startTransaction();
     try {
       const newRestock = await RestockModel.create([restock], { session });
+      const medicine = await MedicineModel.findById(restock.medicineId).session(session);
+      if (medicine) {
+        // DB itemsPerPacket is the authoritative packing unit — NEVER overwritten
+        const dbItemsPerPacket = medicine.itemsPerPacket || 1;
+        // Use form-provided itemsPerPacket for calculating how many items were received.
+        // If not provided, fall back to DB value.
+        const formItemsPerPacket = restock.itemsPerPacket && restock.itemsPerPacket > 0
+          ? restock.itemsPerPacket
+          : dbItemsPerPacket;
 
-      await ProductModel.findByIdAndUpdate(
-        restock.productId,
-        { $inc: { stock: restock.quantity } },
-        { session },
-      );
+        const currentTotal = medicine.totalItemsInStock > 0
+          ? medicine.totalItemsInStock
+          : (medicine.stock * dbItemsPerPacket);
 
+        // Items to add = packets received × itemsPerPacket from form (for calculation only)
+        const addedItems = restock.quantity * formItemsPerPacket;
+        const newTotal = currentTotal + addedItems;
+        // Recalculate full packets using DB's itemsPerPacket
+        const newStock = Math.floor(newTotal / dbItemsPerPacket);
+
+        // Build medicine update: stock fields always updated; price/supplier/expiry replace if provided
+        const medicineUpdate: any = {
+          totalItemsInStock: newTotal,
+          stock: newStock,
+        };
+        if (restock.price !== undefined && restock.price >= 0) {
+          medicineUpdate.price = restock.price;
+        }
+        if (restock.actualPrice !== undefined && restock.actualPrice >= 0) {
+          medicineUpdate.actualPrice = restock.actualPrice;
+        }
+        if (restock.supplier !== undefined && restock.supplier !== "") {
+          medicineUpdate.supplierName = restock.supplier;
+        }
+        if (restock.expiryDate !== undefined && restock.expiryDate !== "") {
+          medicineUpdate.expiryDate = new Date(restock.expiryDate);
+        }
+
+        await MedicineModel.findByIdAndUpdate(
+          restock.medicineId,
+          medicineUpdate,
+          { session },
+        );
+      }
       await session.commitTransaction();
       const obj = newRestock[0].toObject();
       return {
         ...obj,
         id: obj._id.toString(),
         date: obj.date.toISOString(),
-        productId: obj.productId.toString(),
+        medicineId: obj.medicineId.toString(),
       } as unknown as Restock;
     } catch (error) {
       await session.abortTransaction();
@@ -528,6 +624,33 @@ export class MongoStorage implements IStorage {
     });
     return this.mapDoc<Settings>(settings);
   }
+
+  // medicines_db methods
+  async searchMedicinesDb(search?: string): Promise<any[]> {
+    let query: any = {};
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      query = { $or: [{ name: regex }, { genericName: regex }, { category: regex }, { manufacturer: regex }] };
+    }
+    const results = await MedicinesDbModel.find(query).limit(100).sort({ name: 1 });
+    return results.map((r) => {
+      const obj = r.toObject();
+      return { ...obj, id: obj._id.toString(), _id: undefined };
+    });
+  }
+
+  async activateMedicineInDb(id: string, medicineId: string): Promise<void> {
+    await MedicinesDbModel.findByIdAndUpdate(id, { isActivated: true, activatedMedicineId: medicineId });
+  }
+
+  async deactivateMedicineInDb(id: string): Promise<void> {
+    await MedicinesDbModel.findByIdAndUpdate(id, { isActivated: false, activatedMedicineId: null });
+  }
+
+  async getMedicinesDbCount(): Promise<number> {
+    return await MedicinesDbModel.countDocuments();
+  }
 }
 
 export const storage = new MongoStorage();
+export { MedicinesDbModel };

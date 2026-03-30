@@ -27,7 +27,7 @@ export function useCreatePurchase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.restock.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.medicines.list.path] });
     },
   });
 }

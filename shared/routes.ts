@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { 
   insertCategorySchema, 
-  insertProductSchema, 
-  partialProductSchema,
+  insertMedicineSchema, 
+  partialMedicineSchema,
   insertSaleSchema, 
   insertRestockSchema,
   categorySchema,
-  productSchema,
+  medicineSchema,
   saleSchema,
   restockSchema
 } from "./schema";
@@ -53,52 +53,52 @@ export const api = {
     },
   },
 
-  // Products
-  products: {
+  // Medicines
+  medicines: {
     list: {
       method: 'GET' as const,
-      path: '/api/products',
+      path: '/api/medicines',
       responses: {
-        200: z.array(productSchema),
+        200: z.array(medicineSchema),
       },
     },
     get: {
       method: 'GET' as const,
-      path: '/api/products/:id',
+      path: '/api/medicines/:id',
       responses: {
-        200: productSchema,
+        200: medicineSchema,
         404: errorSchemas.notFound,
       },
     },
     getByBarcode: {
       method: 'GET' as const,
-      path: '/api/products/barcode/:barcode',
+      path: '/api/medicines/barcode/:barcode',
       responses: {
-        200: productSchema,
+        200: medicineSchema,
         404: errorSchemas.notFound,
       },
     },
     create: {
       method: 'POST' as const,
-      path: '/api/products',
-      input: insertProductSchema,
+      path: '/api/medicines',
+      input: insertMedicineSchema,
       responses: {
-        201: productSchema,
+        201: medicineSchema,
         400: errorSchemas.validation,
       },
     },
     update: {
       method: 'PUT' as const,
-      path: '/api/products/:id',
-      input: partialProductSchema,
+      path: '/api/medicines/:id',
+      input: partialMedicineSchema,
       responses: {
-        200: productSchema,
+        200: medicineSchema,
         404: errorSchemas.notFound,
       },
     },
     delete: {
       method: 'DELETE' as const,
-      path: '/api/products/:id',
+      path: '/api/medicines/:id',
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,
@@ -106,9 +106,9 @@ export const api = {
     },
     lowStock: {
       method: 'GET' as const,
-      path: '/api/products/low-stock/list',
+      path: '/api/medicines/low-stock/list',
       responses: {
-        200: z.array(productSchema),
+        200: z.array(medicineSchema),
       },
     },
   },

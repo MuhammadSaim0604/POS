@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import {
-  useProducts,
-  useCreateProduct,
-  useUpdateProduct,
-  useDeleteProduct,
-} from "@/hooks/use-products";
+  useMedicines,
+  useCreateMedicine,
+  useUpdateMedicine,
+  useDeleteMedicine,
+} from "@/hooks/use-medicines";
 import { useCategories } from "@/hooks/use-categories";
-import { VariationGenerator } from "@/components/variation-generator";
 import {
   Table,
   TableBody,
@@ -45,17 +44,23 @@ import {
   List,
   X,
   Upload,
-  Download,
   FileText,
   Printer,
+  Database,
+  ArrowLeft,
+  CheckCircle,
+  Circle,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  insertProductSchema,
-  type InsertProduct,
+  Category,
+  insertMedicineSchema,
+  type InsertMedicine,
   type Medicine,
+  formatStock,
 } from "@shared/schema";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,21 +69,22 @@ import html2pdf from "html2pdf.js";
 
 type ViewMode = "list" | "card";
 
-export default function Products() {
-  const { data: products, isLoading } = useProducts();
+export default function Medicines() {
+  const { data: medicines, isLoading } = useMedicines();
   const { data: categories } = useCategories();
-  const deleteProduct = useDeleteProduct();
+  const deleteMedicine = useDeleteMedicine();
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Medicine | null>(null);
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [selectedMedicines, setSelectedMedicines] = useState<Set<string>>(
     new Set(),
   );
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showActivateView, setShowActivateView] = useState(false);
 
-  const filteredProducts = products?.filter(
+  const filteredMedicines = medicines?.filter(
     (p: Medicine) =>
       (p.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
       (p.barcode || "").includes(search),
@@ -86,7 +92,7 @@ export default function Products() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this medicine?")) {
-      await deleteProduct.mutateAsync(id);
+      await deleteMedicine.mutateAsync(id);
       toast({ title: "Medicine deleted" });
     }
   };
@@ -95,36 +101,42 @@ export default function Products() {
     categories?.find((c) => c.id === id)?.name || "Uncategorized";
 
   const getStockStatus = (medicine: Medicine) => {
-    const isLowStock = medicine.stock <= (medicine.lowStockThreshold || 10);
+    const ipp = medicine.itemsPerPacket || 1;
+    const totalItems = medicine.totalItemsInStock || medicine.stock * ipp;
+    const packets = Math.floor(totalItems / ipp);
+    const isLowStock = packets <= (medicine.lowStockThreshold || 10);
     return {
       isLowStock,
       color: isLowStock
         ? "bg-red-100 text-red-700"
         : "bg-green-100 text-green-700",
       label: isLowStock ? "Low Stock" : "In Stock",
+      stockDisplay: formatStock(totalItems, ipp),
     };
   };
 
-  const toggleProductSelection = (productId: string) => {
-    const newSelected = new Set(selectedProducts);
-    if (newSelected.has(productId)) {
-      newSelected.delete(productId);
+  const toggleMedicineSelection = (medicineId: string) => {
+    const newSelected = new Set(selectedMedicines);
+    if (newSelected.has(medicineId)) {
+      newSelected.delete(medicineId);
     } else {
-      newSelected.add(productId);
+      newSelected.add(medicineId);
     }
-    setSelectedProducts(newSelected);
+    setSelectedMedicines(newSelected);
   };
 
   const toggleAllSelection = () => {
-    if (selectedProducts.size === filteredProducts?.length) {
-      setSelectedProducts(new Set());
+    if (selectedMedicines.size === filteredMedicines?.length) {
+      setSelectedMedicines(new Set());
     } else {
-      setSelectedProducts(new Set(filteredProducts?.map((p: Medicine) => p.id) || []));
+      setSelectedMedicines(
+        new Set(filteredMedicines?.map((p: Medicine) => p.id) || []),
+      );
     }
   };
 
   const generateBarcodePDF = () => {
-    if (selectedProducts.size === 0) {
+    if (selectedMedicines.size === 0) {
       toast({
         title: "Error",
         description: "Please select at least one medicine",
@@ -154,6 +166,17 @@ export default function Products() {
     html2pdf().set(options).from(element).save();
   };
 
+  if (showActivateView) {
+    return (
+      <Layout>
+        <ActivateMedicinesView
+          categories={categories || []}
+          onBack={() => setShowActivateView(false)}
+        />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -161,20 +184,28 @@ export default function Products() {
           <div>
             <h2 className="text-3xl font-display font-bold">Inventory</h2>
             <p className="text-muted-foreground">
-              Manage your products and stock levels.
+              Manage your medicines and stock levels.
             </p>
           </div>
           <div className="flex gap-2">
-            {selectedProducts.size > 0 && (
+            {selectedMedicines.size > 0 && (
               <Button
                 onClick={generateBarcodePDF}
                 className="gap-2"
                 data-testid="button-generate-barcode-pdf"
               >
                 <FileText className="w-4 h-4" /> Generate Barcodes PDF (
-                {selectedProducts.size})
+                {selectedMedicines.size})
               </Button>
             )}
+            <Button
+              variant="outline"
+              onClick={() => setShowActivateView(true)}
+              className="gap-2"
+              data-testid="button-activate-medicines"
+            >
+              <Database className="w-4 h-4" /> Activate Medicines
+            </Button>
             <Button
               onClick={() => setIsCreateOpen(true)}
               className="gap-2"
@@ -193,7 +224,7 @@ export default function Products() {
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              data-testid="input-search-products"
+              data-testid="input-search-medicines"
             />
           </div>
 
@@ -227,8 +258,8 @@ export default function Products() {
                   <TableHead className="w-10">
                     <Checkbox
                       checked={
-                        selectedProducts.size === filteredProducts?.length &&
-                        filteredProducts?.length !== 0
+                        selectedMedicines.size === filteredMedicines?.length &&
+                        filteredMedicines?.length !== 0
                       }
                       onCheckedChange={toggleAllSelection}
                       data-testid="checkbox-select-all"
@@ -244,20 +275,20 @@ export default function Products() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts?.map((medicine: Medicine) => {
+                {filteredMedicines?.map((medicine: Medicine) => {
                   const status = getStockStatus(medicine);
                   return (
                     <TableRow
                       key={medicine.id}
                       data-testid={`row-medicine-${medicine.id}`}
-                      onClick={() => toggleProductSelection(medicine.id)}
+                      onClick={() => toggleMedicineSelection(medicine.id)}
                       className="cursor-pointer hover:bg-muted/50"
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
-                          checked={selectedProducts.has(medicine.id)}
+                          checked={selectedMedicines.has(medicine.id)}
                           onCheckedChange={() =>
-                            toggleProductSelection(medicine.id)
+                            toggleMedicineSelection(medicine.id)
                           }
                           data-testid={`checkbox-medicine-${medicine.id}`}
                         />
@@ -271,9 +302,17 @@ export default function Products() {
                       <TableCell className="text-sm text-muted-foreground">
                         {medicine.sku || "-"}
                       </TableCell>
-                      <TableCell>
-                        {getCategoryName(medicine.categoryId)}
-                      </TableCell>
+
+                      {medicine.categoryId ? (
+                        <TableCell>
+                          {getCategoryName(medicine.categoryId)}
+                        </TableCell>
+                      ) : (
+                        <TableCell className="text-sm text-muted-foreground">
+                          -
+                        </TableCell>
+                      )}
+
                       <TableCell className="text-right font-bold">
                         {medicine.price.toFixed(0) || "-"}
                       </TableCell>
@@ -281,7 +320,7 @@ export default function Products() {
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}
                         >
-                          {medicine.stock || "-"}
+                          {status.stockDisplay || "-"}
                         </span>
                       </TableCell>
                       <TableCell
@@ -294,7 +333,7 @@ export default function Products() {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingProduct(medicine);
+                              setEditingMedicine(medicine);
                             }}
                             data-testid={`button-edit-medicine-${medicine.id}`}
                           >
@@ -316,13 +355,13 @@ export default function Products() {
                     </TableRow>
                   );
                 })}
-                {filteredProducts?.length === 0 && (
+                {filteredMedicines?.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={8}
                       className="text-center h-24 text-muted-foreground"
                     >
-                      No products found.
+                      No medicines found.
                     </TableCell>
                   </TableRow>
                 )}
@@ -331,21 +370,21 @@ export default function Products() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-            {filteredProducts?.map((medicine: Medicine) => {
+            {filteredMedicines?.map((medicine: Medicine) => {
               const status = getStockStatus(medicine);
               return (
                 <Card
                   key={medicine.id}
-                  className={`overflow-hidden hover-elevate cursor-pointer ${selectedProducts.has(medicine.id) ? "ring-2 ring-primary bg-accent/5" : ""}`}
+                  className={`overflow-hidden hover-elevate cursor-pointer ${selectedMedicines.has(medicine.id) ? "ring-2 ring-primary bg-accent/5" : ""}`}
                   data-testid={`card-medicine-${medicine.id}`}
-                  onClick={() => toggleProductSelection(medicine.id)}
+                  onClick={() => toggleMedicineSelection(medicine.id)}
                 >
                   <CardHeader className="pb-2 pt-2 px-2">
                     <div className="flex justify-between items-start gap-1">
                       <Checkbox
-                        checked={selectedProducts.has(medicine.id)}
+                        checked={selectedMedicines.has(medicine.id)}
                         onCheckedChange={() => {
-                          toggleProductSelection(medicine.id);
+                          toggleMedicineSelection(medicine.id);
                         }}
                         className="mt-0.5"
                         data-testid={`checkbox-card-medicine-${medicine.id}`}
@@ -356,7 +395,9 @@ export default function Products() {
                           {medicine.name}
                         </h3>
                         <p className="text-xs text-muted-foreground truncate">
-                          {getCategoryName(medicine.categoryId)}
+                          {medicine.categoryId
+                            ? getCategoryName(medicine.categoryId)
+                            : "No Category"}
                         </p>
                       </div>
                       <Badge
@@ -400,7 +441,7 @@ export default function Products() {
                         <p
                           className={`font-semibold ${status.isLowStock ? "text-red-600" : "text-green-600"}`}
                         >
-                          {medicine.stock || "-"}
+                          {status.stockDisplay || "-"}
                         </p>
                       </div>
                     </div>
@@ -412,7 +453,7 @@ export default function Products() {
                         className="flex-1 h-7 text-xs px-1"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingProduct(medicine);
+                          setEditingMedicine(medicine);
                         }}
                         data-testid={`button-edit-card-${medicine.id}`}
                       >
@@ -435,26 +476,26 @@ export default function Products() {
                 </Card>
               );
             })}
-            {filteredProducts?.length === 0 && (
+            {filteredMedicines?.length === 0 && (
               <div className="col-span-full text-center py-8 text-muted-foreground text-sm">
-                No products found.
+                No medicines found.
               </div>
             )}
           </div>
         )}
       </div>
 
-      <ProductForm
+      <MedicineForm
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         categories={categories || []}
       />
 
-      {editingProduct && (
-        <ProductForm
-          open={!!editingProduct}
-          onOpenChange={(open) => !open && setEditingProduct(null)}
-          initialData={editingProduct}
+      {editingMedicine && (
+        <MedicineForm
+          open={!!editingMedicine}
+          onOpenChange={(open) => !open && setEditingMedicine(null)}
+          initialData={editingMedicine}
           categories={categories || []}
         />
       )}
@@ -481,8 +522,9 @@ export default function Products() {
               }}
             >
               {(
-                filteredProducts?.filter((p: Medicine) => selectedProducts.has(p.id)) ||
-                []
+                filteredMedicines?.filter((p: Medicine) =>
+                  selectedMedicines.has(p.id),
+                ) || []
               ).map((medicine: Medicine) => (
                 <div
                   key={medicine.id}
@@ -563,7 +605,7 @@ export default function Products() {
   );
 }
 
-function ProductForm({
+function MedicineForm({
   open,
   onOpenChange,
   initialData,
@@ -574,8 +616,8 @@ function ProductForm({
   initialData?: Medicine;
   categories: any[];
 }) {
-  const createProduct = useCreateProduct();
-  const updateProduct = useUpdateProduct();
+  const createMedicine = useCreateMedicine();
+  const updateMedicine = useUpdateMedicine();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -588,34 +630,32 @@ function ProductForm({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-
-  const form = useForm<InsertProduct>({
-    resolver: zodResolver(insertProductSchema),
+  const form = useForm<InsertMedicine>({
+    resolver: zodResolver(insertMedicineSchema),
     defaultValues: initialData
       ? {
           name: initialData.name,
           description: initialData.description || "",
           barcode: initialData.barcode || "",
-         
+
           price: initialData.price,
-          actualPrice: initialData.actualPrice || 0,
+          actualPrice: initialData.actualPrice,
           stock: initialData.stock,
           categoryId: initialData.categoryId || "",
           lowStockThreshold: initialData.lowStockThreshold || 10,
           sku: initialData.sku || "",
           itemsPerPacket: initialData.itemsPerPacket || 1,
-        
+
           supplierName: initialData.supplierName || "",
           supplierPhone: initialData.supplierPhone || "",
           supplierAddress: initialData.supplierAddress || "",
           image: initialData.image || "",
           expiryDate: initialData.expiryDate || "",
-        
         }
       : {
           name: "",
           description: "",
-      
+
           barcode: "",
           price: 0,
           actualPrice: 0,
@@ -623,16 +663,14 @@ function ProductForm({
           categoryId: "",
           lowStockThreshold: 10,
           sku: "",
-        
+
           itemsPerPacket: 1,
-         
-          
+
           supplierName: "",
           supplierPhone: "",
           supplierAddress: "",
           image: "",
           expiryDate: "",
-        
         },
   });
 
@@ -989,13 +1027,13 @@ function ProductForm({
     }
   };
 
-  const onSubmit = async (data: InsertProduct) => {
+  const onSubmit = async (data: InsertMedicine) => {
     try {
       if (initialData) {
-        await updateProduct.mutateAsync({ id: initialData.id, ...data });
+        await updateMedicine.mutateAsync({ id: initialData.id, ...data });
         toast({ title: "Medicine updated successfully" });
       } else {
-        await createProduct.mutateAsync(data);
+        await createMedicine.mutateAsync(data);
         toast({ title: "Medicine created successfully" });
       }
       onOpenChange(false);
@@ -1031,11 +1069,15 @@ function ProductForm({
             className="space-y-4 pt-4"
           >
             {/* Basic Information */}
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Basic Information</h4>
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Basic Information
+              </h4>
 
               <div className="grid gap-2">
-                <Label htmlFor="name">Medicine Name *</Label>
+                <Label htmlFor="name">
+                  Medicine Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="name"
                   placeholder="Enter medicine name"
@@ -1050,13 +1092,22 @@ function ProductForm({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="expiryDate">Expiry Date</Label>
-                <Input
-                  id="expiryDate"
-                  placeholder="Enter Expiry Date (e.g. 2025-12-31)"
-                  {...form.register("expiryDate")}
-                  data-testid="input-medicine-expiry-date"
-                />
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  onValueChange={(val) => form.setValue("categoryId", val)}
+                  defaultValue={form.getValues("categoryId") || ""}
+                >
+                  <SelectTrigger data-testid="select-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat: Category) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid gap-2">
@@ -1070,43 +1121,155 @@ function ProductForm({
               </div>
             </div>
 
-            {/* Category */}
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Category</h4>
+            {/* Identification */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Identification
+              </h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="barcode">Barcode</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="barcode"
+                      placeholder="Scan or enter barcode"
+                      {...form.register("barcode")}
+                      data-testid="input-medicine-barcode"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={generateBarcode}
+                      title="Generate random barcode"
+                    >
+                      <Barcode className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {form.formState.errors.barcode && (
+                    <span className="text-red-500 text-xs">
+                      {form.formState.errors.barcode.message}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="sku">SKU</Label>
+                  <Input
+                    id="sku"
+                    placeholder="Stock Keeping Unit"
+                    {...form.register("sku")}
+                    data-testid="input-medicine-sku"
+                  />
+                </div>
+              </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  onValueChange={(val) => form.setValue("categoryId", val)}
-                  defaultValue={form.getValues("categoryId") || ""}
-                >
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.categoryId && (
-                  <span className="text-red-500 text-xs">
-                    {form.formState.errors.categoryId.message}
-                  </span>
-                )}
+                <Label htmlFor="expiryDate">Expiry Date</Label>
+                <Input
+                  id="expiryDate"
+                  type="date"
+                  {...form.register("expiryDate")}
+                  data-testid="input-medicine-expiry-date"
+                />
+              </div>
+            </div>
+
+            {/* Packaging & Pricing */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Packaging & Pricing
+              </h4>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="itemsPerPacket">
+                    Items Per Packet <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="itemsPerPacket"
+                    type="number"
+                    min="1"
+                    {...form.register("itemsPerPacket", {
+                      valueAsNumber: true,
+                    })}
+                    data-testid="input-items-per-packet"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="actualPrice">
+                    Purchase Price (PKR){" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="actualPrice"
+                    type="number"
+                    {...form.register("actualPrice", { valueAsNumber: true })}
+                    data-testid="input-medicine-actual-price"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="price">
+                    Retail Price (PKR){" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    {...form.register("price", { valueAsNumber: true })}
+                    data-testid="input-medicine-price"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Stock */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Stock
+              </h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="stock">
+                    Stock (Packets) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    {...form.register("stock", { valueAsNumber: true })}
+                    data-testid="input-medicine-stock"
+                  />
+                  {form.formState.errors.stock && (
+                    <span className="text-red-500 text-xs">
+                      {form.formState.errors.stock.message}
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lowStockThreshold">
+                    Low Stock Threshold (Packets)
+                  </Label>
+                  <Input
+                    id="lowStockThreshold"
+                    type="number"
+                    {...form.register("lowStockThreshold", {
+                      valueAsNumber: true,
+                    })}
+                    data-testid="input-medicine-threshold"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Medicine Image */}
             <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Medicine Image</h4>
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Medicine Image (Optional)
+              </h4>
 
               <div className="grid gap-2">
-                <Label htmlFor="image">
-                  Image Upload (Optional) - Square Crop Required
-                </Label>
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
                   {imagePreview ? (
                     <div className="space-y-3">
@@ -1126,9 +1289,7 @@ function ProductForm({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            fileInputRef.current?.click();
-                          }}
+                          onClick={() => fileInputRef.current?.click()}
                           className="flex-1"
                           data-testid="button-change-image"
                         >
@@ -1179,118 +1340,11 @@ function ProductForm({
               </div>
             </div>
 
-            {/* Pricing and Stock */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-sm">Pricing & Stock</h4>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="actualPrice">Purchase Price (PKR)</Label>
-                  <Input
-                    id="actualPrice"
-                    type="number"
-                    {...form.register("actualPrice", {
-                      valueAsNumber: true,
-                    })}
-                    data-testid="input-medicine-actual-price"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="price">Retail Price (PKR)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    {...form.register("price", {
-                      valueAsNumber: true,
-                    })}
-                    data-testid="input-medicine-price"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="barcode">Barcode *</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="barcode"
-                      {...form.register("barcode")}
-                      data-testid="input-medicine-barcode"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={generateBarcode}
-                      title="Generate random barcode"
-                    >
-                      <Barcode className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  {form.formState.errors.barcode && (
-                    <span className="text-red-500 text-xs">
-                      {form.formState.errors.barcode.message}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="stock">Stock Quantity *</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    {...form.register("stock", { valueAsNumber: true })}
-                    data-testid="input-medicine-stock"
-                  />
-                  {form.formState.errors.stock && (
-                    <span className="text-red-500 text-xs">
-                      {form.formState.errors.stock.message}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="lowStockThreshold">Low Stock Threshold</Label>
-                  <Input
-                    id="lowStockThreshold"
-                    type="number"
-                    {...form.register("lowStockThreshold", {
-                      valueAsNumber: true,
-                    })}
-                    data-testid="input-medicine-threshold"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input
-                    id="sku"
-                    placeholder="Stock Keeping Unit"
-                    {...form.register("sku")}
-                    data-testid="input-medicine-sku"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="itemsPerPacket">Items Per Packet</Label>
-                  <Input
-                    id="itemsPerPacket"
-                    type="number"
-                    min="1"
-                    {...form.register("itemsPerPacket", {
-                      valueAsNumber: true,
-                    })}
-                    data-testid="input-items-per-packet"
-                  />
-                </div>
-              </div>
-            </div>
-
-
-            {/* Supplier Information - Always Visible */}
+            {/* Supplier Information */}
             <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Supplier Information</h4>
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Supplier Information
+              </h4>
 
               <div className="grid gap-2">
                 <Label htmlFor="supplier-name">Supplier Name</Label>
@@ -1307,7 +1361,7 @@ function ProductForm({
                   <Label htmlFor="supplier-phone">Supplier Phone</Label>
                   <Input
                     id="supplier-phone"
-                    placeholder="e.g., (555) 123-4567"
+                    placeholder="e.g., 0300-1234567"
                     {...form.register("supplierPhone")}
                     data-testid="input-supplier-phone"
                   />
@@ -1324,7 +1378,6 @@ function ProductForm({
               </div>
             </div>
 
-        
             {/* Form Actions */}
             <div className="flex justify-end gap-2 pt-4">
               <Button
@@ -1339,7 +1392,7 @@ function ProductForm({
               </Button>
               <Button
                 type="submit"
-                disabled={createProduct.isPending || updateProduct.isPending}
+                disabled={createMedicine.isPending || updateMedicine.isPending}
                 data-testid="button-submit-form"
               >
                 Save Medicine
@@ -1409,5 +1462,495 @@ function ProductForm({
       {/* Hidden canvas for cropping output */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </>
+  );
+}
+
+// ---- Activate Medicines View ----
+
+interface ActivateMedicinesViewProps {
+  categories: any[];
+  onBack: () => void;
+}
+
+function ActivateMedicinesView({
+  categories,
+  onBack,
+}: ActivateMedicinesViewProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [activatingEntry, setActivatingEntry] = useState<any | null>(null);
+
+  // Form state for the activation modal
+  const [modalForm, setModalForm] = useState({
+    itemsPerPacket: 1,
+    stock: 0,
+    actualPrice: 0,
+    price: 0,
+    expiryDate: "",
+    categoryId: "",
+    barcode: "",
+    sku: "",
+    supplierName: "",
+    supplierPhone: "",
+    supplierAddress: "",
+    lowStockThreshold: 10,
+  });
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: dbMedicines = [], isLoading } = useQuery({
+    queryKey: ["/api/medicines-db", debouncedSearch],
+    queryFn: async () => {
+      const url = debouncedSearch
+        ? `/api/medicines-db?search=${encodeURIComponent(debouncedSearch)}`
+        : "/api/medicines-db";
+      const res = await fetch(url);
+      return res.json();
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await fetch(`/api/medicines-db/${id}/activate`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Activation failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Medicine activated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/medicines-db"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/medicines"] });
+      setActivatingEntry(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch(`/api/medicines-db/${id}/deactivate`, { method: "PATCH" });
+    },
+    onSuccess: () => {
+      toast({ title: "Medicine deactivated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/medicines-db"] });
+    },
+  });
+
+  const handleActivate = (entry: any) => {
+    setActivatingEntry(entry);
+    setModalForm({
+      itemsPerPacket: 1,
+      stock: 0,
+      actualPrice: 0,
+      price: 0,
+      expiryDate: "",
+      categoryId: "",
+      barcode: "",
+      sku: "",
+      supplierName: "",
+      supplierPhone: "",
+      supplierAddress: "",
+      lowStockThreshold: 10,
+    });
+  };
+
+  const handleConfirmActivate = () => {
+    if (!activatingEntry) return;
+    if (!modalForm.price || modalForm.price <= 0) {
+      toast({ title: "Retail price is required", variant: "destructive" });
+      return;
+    }
+    activateMutation.mutate({
+      id: activatingEntry.id,
+      data: {
+        name: activatingEntry.name,
+        description:
+          activatingEntry.description || activatingEntry.genericName || "",
+        ...modalForm,
+      },
+    });
+  };
+
+  const generateBarcode = () => {
+    const random = Math.floor(Math.random() * 1000000000000)
+      .toString()
+      .padStart(12, "0");
+    setModalForm((p) => ({ ...p, barcode: random }));
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div>
+          <h2 className="text-3xl font-display font-bold">
+            Activate Medicines
+          </h2>
+          <p className="text-muted-foreground">
+            Search the pharmaceutical directory and add medicines to your
+            inventory.
+          </p>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, generic name, category..."
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          autoFocus
+        />
+      </div>
+
+      {/* Results Table */}
+      <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Medicine Name</TableHead>
+              <TableHead>Generic Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Manufacturer</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading && (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center h-24 text-muted-foreground"
+                >
+                  Loading medicines directory...
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading && dbMedicines.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center h-24 text-muted-foreground"
+                >
+                  No medicines found.
+                </TableCell>
+              </TableRow>
+            )}
+            {dbMedicines.map((entry: any) => (
+              <TableRow key={entry.id} className="hover:bg-muted/40">
+                <TableCell className="font-medium">{entry.name}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {entry.genericName || "-"}
+                </TableCell>
+                <TableCell>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">
+                    {entry.category || "-"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-sm">{entry.type || "-"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {entry.manufacturer || "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {entry.isActivated ? (
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                        <CheckCircle className="w-3.5 h-3.5" /> Active
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 text-red-500 border-red-200"
+                        onClick={() => deactivateMutation.mutate(entry.id)}
+                        disabled={deactivateMutation.isPending}
+                      >
+                        Deactivate
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => handleActivate(entry)}
+                    >
+                      <Circle className="w-3.5 h-3.5 mr-1" /> Activate
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Activation Modal */}
+      <Dialog
+        open={!!activatingEntry}
+        onOpenChange={(open) => !open && setActivatingEntry(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Activate: {activatingEntry?.name}</DialogTitle>
+            {activatingEntry?.genericName && (
+              <p className="text-sm text-muted-foreground">
+                {activatingEntry.genericName} — {activatingEntry.manufacturer}
+              </p>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            {/* Packaging & Pricing */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Packaging & Pricing
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="grid gap-1">
+                  <Label>
+                    Items Per Packet <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={modalForm.itemsPerPacket}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        itemsPerPacket: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label>
+                    Purchase Price (PKR){" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={modalForm.actualPrice}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        actualPrice: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label>
+                    Retail Price (PKR){" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={modalForm.price}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        price: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Stock */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Stock
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1">
+                  <Label>
+                    Initial Stock (Packets){" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={modalForm.stock}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        stock: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label>Low Stock Threshold</Label>
+                  <Input
+                    type="number"
+                    value={modalForm.lowStockThreshold}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        lowStockThreshold: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Identification */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Identification
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1">
+                  <Label>Barcode</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Scan or enter barcode"
+                      value={modalForm.barcode}
+                      onChange={(e) =>
+                        setModalForm((p) => ({ ...p, barcode: e.target.value }))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={generateBarcode}
+                    >
+                      <Barcode className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid gap-1">
+                  <Label>SKU</Label>
+                  <Input
+                    placeholder="Stock Keeping Unit"
+                    value={modalForm.sku}
+                    onChange={(e) =>
+                      setModalForm((p) => ({ ...p, sku: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid gap-1">
+                <Label>Expiry Date</Label>
+                <Input
+                  type="date"
+                  value={modalForm.expiryDate}
+                  onChange={(e) =>
+                    setModalForm((p) => ({ ...p, expiryDate: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Category & Supplier */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-primary border-b pb-1">
+                Category & Supplier
+              </h4>
+              <div className="grid gap-1">
+                <Label>Category</Label>
+                <Select
+                  value={modalForm.categoryId}
+                  onValueChange={(val) =>
+                    setModalForm((p) => ({ ...p, categoryId: val }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat: any) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label>Supplier Name</Label>
+                <Input
+                  placeholder={
+                    activatingEntry?.manufacturer || "e.g., GSK Pakistan"
+                  }
+                  value={modalForm.supplierName}
+                  onChange={(e) =>
+                    setModalForm((p) => ({
+                      ...p,
+                      supplierName: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1">
+                  <Label>Supplier Phone</Label>
+                  <Input
+                    placeholder="0300-0000000"
+                    value={modalForm.supplierPhone}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        supplierPhone: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label>Supplier Address</Label>
+                  <Input
+                    placeholder="City / Address"
+                    value={modalForm.supplierAddress}
+                    onChange={(e) =>
+                      setModalForm((p) => ({
+                        ...p,
+                        supplierAddress: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivatingEntry(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmActivate}
+              disabled={activateMutation.isPending}
+            >
+              {activateMutation.isPending
+                ? "Activating..."
+                : "Confirm & Add to Inventory"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

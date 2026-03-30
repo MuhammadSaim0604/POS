@@ -27,7 +27,7 @@ Preferred communication style: Simple, everyday language.
 - **Build Tool**: Vite with path aliases (@/, @shared/, @assets/)
 
 **Design System:**
-- Material Design 3 adapted for enterprise productivity
+- Material Design 3 adapted for enterprise medicineivity
 - Inter font family via Google Fonts
 - Custom color palette with primary blue, accent purple, and semantic colors
 - Responsive layout with sidebar navigation
@@ -46,8 +46,8 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Models
 Core entities defined in `shared/schema.ts`:
-- **Products**: With variations support (color, size, packets), barcode, pricing, stock
-- **Categories**: Simple grouping for products
+- **Medicines**: With variations support (color, size, packets), barcode, pricing, stock
+- **Categories**: Simple grouping for medicines
 - **Bills**: Multi-status workflow (draft/completed/printed), customer info, line items
 - **Sales**: Transaction history with items
 - **Restocks**: Transaction history with items, restock entries with supplier tracking
@@ -61,7 +61,7 @@ This enables type-safe API contracts across the stack.
 
 ### Build & Development
 - Development: `npm run dev` - Uses tsx to run TypeScript directly with Vite dev server
-- Production build: `npm run build` - Vite builds frontend, esbuild bundles server
+- Medicineion build: `npm run build` - Vite builds frontend, esbuild bundles server
 - Database migrations: Drizzle Kit configured but MongoDB is primary (Mongoose)
 
 ## External Dependencies
@@ -77,12 +77,12 @@ This enables type-safe API contracts across the stack.
 - **Lucide React**: Icon library
 
 ### Utilities
-- **jsbarcode**: EAN-13 barcode generation for products
+- **jsbarcode**: EAN-13 barcode generation for medicines
 - **html2pdf.js**: PDF generation for barcode printing
 - **date-fns**: Date formatting and manipulation
 - **Zod**: Schema validation across frontend and backend
 
 ### Development Tools
 - **Vite**: Frontend build tool with HMR
-- **esbuild**: Server bundling for production
+- **esbuild**: Server bundling for medicineion
 - **Drizzle Kit**: Database tooling (configured for PostgreSQL but MongoDB is used)

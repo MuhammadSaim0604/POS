@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Bills from "@/pages/bills";
 import CreateBill from "@/pages/create-bill";
-import Products from "@/pages/products";
+import Medicines from "@/pages/medicines";
 import Categories from "@/pages/categories";
 import SalesHistory from "@/pages/sales";
 import Restock from "@/pages/restock";
@@ -23,7 +23,7 @@ function Router() {
       <Route path="/bills" component={Bills} />
       <Route path="/bills/create" component={CreateBill} />
       <Route path="/bills/:id/edit" component={CreateBill} />
-      <Route path="/products" component={Products} />
+      <Route path="/medicines" component={Medicines} />
       <Route path="/categories" component={Categories} />
       <Route path="/sales" component={SalesHistory} />
       <Route path="/restock" component={Restock} />

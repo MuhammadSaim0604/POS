@@ -39,8 +39,8 @@ export default function Help() {
       icon: TrendingUp,
       questions: [
         {
-          q: "Where can I see my top selling products?",
-          a: "The Dashboard provides a real-time 'Top Selling Products' list based on completed bills, showing the quantity of packets sold."
+          q: "Where can I see my top selling medicines?",
+          a: "The Dashboard provides a real-time 'Top Selling Medicines' list based on completed bills, showing the quantity of packets sold."
         },
         {
           q: "What does the weekly chart show?",

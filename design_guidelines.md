@@ -1,7 +1,7 @@
-# POS Products Page Design Guidelines
+# POS Medicines Page Design Guidelines
 
 ## Design Approach
-**System-Based Approach**: Material Design 3 adapted for enterprise productivity
+**System-Based Approach**: Material Design 3 adapted for enterprise medicineivity
 **Justification**: Data-heavy retail application requiring efficiency, scanability, and established interaction patterns. Material Design provides robust data visualization components while maintaining modern aesthetics.
 
 ## Core Design Elements
@@ -61,13 +61,13 @@
 - "Clear All" and "Apply" actions
 
 **Empty States**:
-- No products: Illustration + "Add your first medicine" CTA
-- No search results: "No products found" with clear filters button
+- No medicines: Illustration + "Add your first medicine" CTA
+- No search results: "No medicines found" with clear filters button
 - Loading: Skeleton cards/rows matching view type
 
 **Pagination/Infinite Scroll**:
 - Bottom pagination: Items per page selector + page numbers
-- Show "X-Y of Z products"
+- Show "X-Y of Z medicines"
 
 ## Images
 **Medicine Images**: Essential throughout

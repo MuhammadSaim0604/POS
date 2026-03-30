@@ -27,7 +27,7 @@ export function useCreateSale() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.sales.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.products.list.path] }); // Stocks updated
+      queryClient.invalidateQueries({ queryKey: [api.medicines.list.path] }); // Stocks updated
     },
   });
 }

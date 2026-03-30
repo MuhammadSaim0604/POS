@@ -29,7 +29,7 @@ export interface Variation {
 
 interface VariationGeneratorProps {
   onVariationsGenerated: (variations: Variation[]) => void;
-  productName: string;
+  medicineName: string;
 }
 
 const generateEAN13 = (): string => {
@@ -48,7 +48,7 @@ const generateEAN13 = (): string => {
 
 export function VariationGenerator({
   onVariationsGenerated,
-  productName,
+  medicineName,
 }: VariationGeneratorProps) {
   const [colors, setColors] = useState<string[]>([]);
   const [colorInput, setColorInput] = useState("");
@@ -171,7 +171,7 @@ export function VariationGenerator({
           Variable Medicine Generator
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Create multiple medicine variations (e.g., {productName || "Medicine"}{" "}
+          Create multiple medicine variations (e.g., {medicineName || "Medicine"}{" "}
           in different colors and sizes)
         </p>
       </div>

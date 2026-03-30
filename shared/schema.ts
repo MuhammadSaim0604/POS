@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 // Shared Zod schemas for the application
-// Note: We are using Zod for validation across Frontend and Backend.
-// Mongoose models will be defined in the backend to match these schemas.
 
 // --- Categories ---
 export const categorySchema = z.object({
@@ -12,16 +10,30 @@ export const categorySchema = z.object({
 
 export const insertCategorySchema = categorySchema.omit({ id: true });
 
-// --- Products ---
-export const productSchema = z.object({
+// --- Medicines ---
+export const medicineSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Medicine name is required"),
   description: z.string().optional(),
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.string().optional().or(z.literal("")),
 
   // Pricing & Stock
-  price: z.number().min(0, "Price must be positive").default(0), // Price per item (not per packet)
-  stock: z.number().int().min(0, "Stock cannot be negative").default(0), // Stock in packets
+  price: z.number({
+    required_error: "Price is required",
+    invalid_type_error: "Price must be a number",
+  }).min(0, "Price must be non-negative"),
+
+  actualPrice: z.number().min(0).default(0),
+
+  // stock = full packets in stock
+  stock: z.number({
+    required_error: "Stock is required",
+    invalid_type_error: "Stock must be a number",
+  }).min(0, "Stock cannot be negative"),
+
+  // totalItemsInStock = total individual items (stock * itemsPerPacket + partial items)
+  totalItemsInStock: z.number().int().min(0).default(0),
+
   lowStockThreshold: z
     .number()
     .int()
@@ -32,11 +44,8 @@ export const productSchema = z.object({
     .number()
     .int()
     .min(1, "Items per packet must be at least 1")
-    .default(1), // How many items in one packet
+    .default(1),
 
-  // Variation Details (when unitType is packet)
-  color: z.string().optional(),
-  size: z.string().optional(),
   // Supplier Information
   supplierName: z.string().optional().default(""),
   supplierPhone: z.string().optional().default(""),
@@ -44,45 +53,40 @@ export const productSchema = z.object({
 
   sku: z.string().optional().default(""),
   image: z.string().optional().default(""),
-  barcode: z
-    .string()
-    .min(12, "Valid EAN-13 barcode required")
-    .or(z.literal("")),
+  barcode: z.string().optional().or(z.literal("")).optional(),
 
-  actualPrice: z.number().min(0).default(0), // Actual purchase price per item
   expiryDate: z.string().or(z.date()).optional(),
 });
 
-const baseInsertProductSchema = productSchema.omit({ id: true });
+const baseInsertMedicineSchema = medicineSchema.omit({ id: true });
 
-export const insertProductSchema = baseInsertProductSchema.refine(
-  (data) => {
-    return true;
-  },
+export const insertMedicineSchema = baseInsertMedicineSchema.refine(
+  () => true,
   {
-    message: "Variation products must have at least a color or size",
-    path: ["color"],
+    message: "Invalid medicine data",
+    path: ["name"],
   },
 );
 
-export const partialProductSchema = baseInsertProductSchema.partial();
+export const partialMedicineSchema = baseInsertMedicineSchema.partial();
 
 // --- Bill Items ---
+// qty = total individual items (e.g. 5 tablets, not 1 packet of 10)
 export const billItemSchema = z.object({
-  productId: z.string(),
-  productName: z.string(),
+  medicineId: z.string().optional().default(""),
+  medicineName: z.string(),
   pricePerItem: z.number().min(0),
   itemsPerPacket: z.number().int().min(1),
-  packetQuantity: z.number().int().min(1),
-  discountPerItem: z.number().min(0).default(0), // Fixed discount per item
+  qty: z.number().int().min(1),          // total individual items
+  discountPerItem: z.number().min(0).default(0),
 });
 
 // --- Bills ---
 export const billSchema = z.object({
   id: z.string(),
   billNumber: z.string(),
-  customerName: z.string().min(1, "Customer name is required"),
-  customerPhone: z.string(),
+  customerName: z.string().optional().default(""),
+  customerPhone: z.string().optional().default(""),
   customerBusinessName: z.string().optional().default(""),
   customerCity: z.string().optional().default(""),
   customerAddress: z.string().optional().default(""),
@@ -91,7 +95,7 @@ export const billSchema = z.object({
   status: z.enum(["draft", "completed", "printed"]).default("draft"),
   items: z.array(billItemSchema),
   totalAmount: z.number().min(0),
-  discountOnBill: z.number().min(0).default(0), // Fixed discount on entire bill
+  discountOnBill: z.number().min(0).default(0),
   notes: z.string().optional(),
   date: z.string().or(z.date()),
 });
@@ -102,9 +106,9 @@ export const insertBillSchema = billSchema.omit({
   date: true,
 });
 
-// --- Sales / Invoices (Legacy, keeping for backward compatibility) ---
+// --- Sales / Invoices ---
 export const saleItemSchema = z.object({
-  productId: z.string(),
+  medicineId: z.string(),
   name: z.string(),
   quantity: z.number().int().positive(),
   priceAtSale: z.number(),
@@ -122,10 +126,16 @@ export const insertSaleSchema = saleSchema.omit({ id: true, date: true });
 // --- Restock / Purchases ---
 export const restockSchema = z.object({
   id: z.string(),
-  productId: z.string(),
+  medicineId: z.string(),
   quantity: z.number().int().positive(),
+  // itemsPerPacket provided in restock form — used ONLY for calculation, NOT stored in medicine
+  itemsPerPacket: z.number().int().min(1).optional(),
   date: z.string().or(z.date()),
   supplier: z.string().optional(),
+  // These fields replace the medicine's DB values on restock
+  price: z.number().min(0).optional(),
+  actualPrice: z.number().min(0).optional(),
+  expiryDate: z.string().optional(),
 });
 
 export const insertRestockSchema = restockSchema.omit({ id: true, date: true });
@@ -140,6 +150,16 @@ export const settingsSchema = z.object({
     .default("FB Collection, near Kabeer Brothers, Karor Pakka"),
   printAutomatically: z.boolean().default(true),
   invoiceFooter: z.string().default("Thank you for shopping with us!"),
+  // Keyboard Shortcuts
+  shortcutSearchMedicines: z.string().default("Ctrl+Z"),
+  shortcutScanner: z.string().default("Ctrl+S"),
+  shortcutCustomItem: z.string().default("Ctrl+C"),
+  shortcutNewBill: z.string().default("Ctrl+Space"),
+  shortcutCreateBill: z.string().default("Ctrl+Enter"),
+  shortcutDiscount: z.string().default("Ctrl+D"),
+  shortcutResetBill: z.string().default("Ctrl+R"),
+  shortcutDraftBill: z.string().default("Ctrl+Shift+S"),
+  shortcutGoToCreateBill: z.string().default("Ctrl+B"),
 });
 
 export const insertSettingsSchema = settingsSchema.omit({ id: true });
@@ -148,8 +168,8 @@ export const insertSettingsSchema = settingsSchema.omit({ id: true });
 export type Category = z.infer<typeof categorySchema>;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
-export type Medicine = z.infer<typeof productSchema>;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Medicine = z.infer<typeof medicineSchema>;
+export type InsertMedicine = z.infer<typeof insertMedicineSchema>;
 
 export type BillItem = z.infer<typeof billItemSchema>;
 export type Bill = z.infer<typeof billSchema>;
@@ -164,3 +184,12 @@ export type InsertRestock = z.infer<typeof insertRestockSchema>;
 
 export type Settings = z.infer<typeof settingsSchema>;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
+
+// --- Stock Display Helper ---
+export function formatStock(totalItemsInStock: number, itemsPerPacket: number): string {
+  const packets = Math.floor(totalItemsInStock / itemsPerPacket);
+  const remaining = totalItemsInStock % itemsPerPacket;
+  if (itemsPerPacket === 1) return `${totalItemsInStock}`;
+  if (remaining === 0) return `${packets} pkts`;
+  return `${packets} pkts ${remaining} items`;
+}

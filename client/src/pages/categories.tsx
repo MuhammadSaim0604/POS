@@ -31,7 +31,7 @@ export default function Categories() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete this category? Products in this category may be affected.")) {
+    if (confirm("Delete this category? Medicines in this category may be affected.")) {
       await deleteCategory.mutateAsync(id);
       toast({ title: "Category deleted" });
     }

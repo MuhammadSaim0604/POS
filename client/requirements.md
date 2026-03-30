@@ -1,7 +1,7 @@
 ## Packages
 recharts | Analytics charts for sales and best sellers
 framer-motion | Smooth transitions for page navigation and modals
-jsbarcode | Generating barcode previews for products
+jsbarcode | Generating barcode previews for medicines
 
 ## Notes
 Tailwind Config - extend fontFamily:

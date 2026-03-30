@@ -21,6 +21,21 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
 
+function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+  if (!shortcut) return false;
+  const parts = shortcut.toLowerCase().split("+").map((p) => p.trim());
+  const needsCtrl = parts.includes("ctrl");
+  const needsShift = parts.includes("shift");
+  const needsAlt = parts.includes("alt");
+  const keyPart = parts.find((p) => !["ctrl", "shift", "alt", "meta"].includes(p)) || "";
+  const eventKey = e.key.toLowerCase();
+  let keyMatches = false;
+  if (keyPart === "space") keyMatches = e.key === " ";
+  else if (keyPart === "enter") keyMatches = e.key === "Enter";
+  else keyMatches = eventKey === keyPart;
+  return e.ctrlKey === needsCtrl && e.shiftKey === needsShift && e.altKey === needsAlt && keyMatches;
+}
+
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   {
@@ -32,7 +47,7 @@ const sidebarItems = [
       { label: "Create Bill", href: "/bills/create" },
     ],
   },
-  { icon: Package, label: "Products", href: "/products" },
+  { icon: Package, label: "Medicines", href: "/medicines" },
   { icon: Tags, label: "Categories", href: "/categories" },
   { icon: Truck, label: "Restock", href: "/restock" },
   { icon: ShoppingCart, label: "Sales History", href: "/sales" },
@@ -43,7 +58,7 @@ const sidebarItems = [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { settings } = useSettings();
@@ -52,6 +67,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [expandedMenu, setExpandedMenu] = useState<string | null>(
     initialExpanded,
   );
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, settings?.shortcutGoToCreateBill || "Ctrl+B")) {
+        e.preventDefault();
+        setLocation("/bills/create");
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [settings, setLocation]);
 
   // Auto-expand Bills when navigating to it
   useEffect(() => {

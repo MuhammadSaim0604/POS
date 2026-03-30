@@ -1,6 +1,6 @@
 import { Layout } from "@/components/layout";
 import { StatsCard } from "@/components/stats-card";
-import { useProducts } from "@/hooks/use-products";
+import { useMedicines } from "@/hooks/use-medicines";
 import { useSales } from "@/hooks/use-sales";
 import { useCategories } from "@/hooks/use-categories";
 import {
@@ -30,7 +30,7 @@ import {
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 
 export default function Dashboard() {
-  const { data: products } = useProducts();
+  const { data: medicines } = useMedicines();
   const { data: sales } = useSales();
   const { data: categories } = useCategories();
 
@@ -49,8 +49,8 @@ export default function Dashboard() {
   const totalProfit =
     sales?.reduce((acc: number, sale: any) => {
       const saleProfit = sale.items.reduce((itemAcc: number, item: any) => {
-        const medicine = (products as any[])?.find(
-          (p: any) => p.id === item.productId || p.name === item.productName,
+        const medicine = (medicines as any[])?.find(
+          (p: any) => p.id === item.medicineId || p.name === item.medicineName,
         );
 
         const itemsPerPacket =
@@ -85,12 +85,16 @@ export default function Dashboard() {
       }, 0);
       return acc + saleProfit;
     }, 0) || 0;
-  const totalProducts = products?.length || 0;
-  const lowStockProducts =
-    (products as any[])?.filter((p: any) => p.stock <= p.lowStockThreshold) ||
-    [];
+  const totalMedicines = medicines?.length || 0;
+  const lowStockMedicines =
+    (medicines as any[])?.filter((p: any) => {
+      const ipp = p.itemsPerPacket || 1;
+      const totalItems = p.totalItemsInStock || (p.stock * ipp);
+      const packets = Math.floor(totalItems / ipp);
+      return packets <= (p.lowStockThreshold || 10);
+    }) || [];
   const totalCategories = categories?.length || 0;
-  const lowStockCount = lowStockProducts.length || 0;
+  const lowStockCount = lowStockMedicines.length || 0;
 
   // Real data for chart - aggregate sales by day for the current week
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -108,21 +112,20 @@ export default function Dashboard() {
     };
   });
 
-  // Top products calculation
-  const productSalesMap: Record<string, number> = {};
+  // Top medicines calculation
+  const medicineSalesMap: Record<string, number> = {};
   sales?.forEach((sale: any) => {
     sale.items.forEach((item: any) => {
-      // In Bill schema, productName and packetQuantity are used
-      // In Sale schema (legacy), name and quantity are used
-      const name = item.productName || item.name;
-      const qty = item.packetQuantity || item.quantity;
+      // Bill items use medicineName + qty; legacy sale items use name + quantity
+      const name = item.medicineName || item.name;
+      const qty = item.qty || item.quantity;
       if (name) {
-        productSalesMap[name] = (productSalesMap[name] || 0) + qty;
+        medicineSalesMap[name] = (medicineSalesMap[name] || 0) + qty;
       }
     });
   });
 
-  const topProducts = Object.entries(productSalesMap)
+  const topMedicines = Object.entries(medicineSalesMap)
     .map(([name, qty]) => ({ name, qty }))
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 5);
@@ -132,7 +135,7 @@ export default function Dashboard() {
     categories
       ?.map((cat) => {
         const count =
-          (products as any[])?.filter((p: any) => p.categoryId === cat.id)
+          (medicines as any[])?.filter((p: any) => p.categoryId === cat.id)
             .length || 0;
         return { name: cat.name, value: count };
       })
@@ -180,8 +183,8 @@ export default function Dashboard() {
             description="Estimated net profit"
           />
           <StatsCard
-            title="Products in Stock"
-            value={totalProducts}
+            title="Medicines in Stock"
+            value={totalMedicines}
             icon={Package}
             description="active SKUs"
           />
@@ -201,7 +204,7 @@ export default function Dashboard() {
             description="organized sections"
           />
           <StatsCard
-            title="Low Stock Products"
+            title="Low Stock Medicines"
             value={lowStockCount}
             icon={AlertTriangle}
             trend="down"
@@ -332,12 +335,12 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-accent" />
-                Top Selling Products
+                Top Selling Medicines
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topProducts.map((medicine, idx) => (
+                {topMedicines.map((medicine, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between border-b border-border/40 pb-2 last:border-0 last:pb-0"
@@ -348,7 +351,7 @@ export default function Dashboard() {
                     </span>
                   </div>
                 ))}
-                {topProducts.length === 0 && (
+                {topMedicines.length === 0 && (
                   <p className="text-center text-muted-foreground py-8">
                     No sales data available.
                   </p>
@@ -368,7 +371,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {lowStockProducts.slice(0, 6).map((medicine: any) => (
+                {lowStockMedicines.slice(0, 6).map((medicine: any) => (
                   <div
                     key={medicine.id}
                     className="flex items-center justify-between p-3 border rounded-lg bg-destructive/5 border-destructive/20"
@@ -383,7 +386,13 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-bold text-destructive">
-                        {medicine.stock} left
+                        {(() => {
+                          const ipp = medicine.itemsPerPacket || 1;
+                          const total = medicine.totalItemsInStock || (medicine.stock * ipp);
+                          const pkts = Math.floor(total / ipp);
+                          const rem = total % ipp;
+                          return ipp === 1 ? `${total}` : rem === 0 ? `${pkts} pkts` : `${pkts} pkts ${rem} items`;
+                        })()} left
                       </span>
                       <Link href={`/restock?barcode=${medicine.barcode}`}>
                         <Button size="sm" variant="outline" className="h-8">
@@ -394,9 +403,9 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              {lowStockProducts.length === 0 && (
+              {lowStockMedicines.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
-                  All products well stocked.
+                  All medicines well stocked.
                 </p>
               )}
             </CardContent>

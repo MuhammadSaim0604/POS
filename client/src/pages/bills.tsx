@@ -5,7 +5,7 @@ import {
   useDeleteBill,
   useUpdateBillStatus,
 } from "@/hooks/use-bills";
-import { useProducts } from "@/hooks/use-products";
+import { useMedicines } from "@/hooks/use-medicines";
 import {
   Table,
   TableBody,
@@ -49,10 +49,11 @@ import type { Bill } from "@shared/schema";
 import { BillTemplate } from "@/components/bill-template";
 import { useCategories } from "@/hooks/use-categories";
 import html2pdf from "html2pdf.js";
+import { formatStock } from "@shared/schema";
 
 export default function Bills() {
   const { data: bills, isLoading } = useBills();
-  const { data: products } = useProducts();
+  const { data: medicines } = useMedicines();
   const { data: categories } = useCategories();
   const deleteBill = useDeleteBill();
   const updateStatus = useUpdateBillStatus();
@@ -198,10 +199,10 @@ export default function Bills() {
                         {bill.billNumber}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {bill.customerName}
+                        {bill.customerName || <span className="text-muted-foreground italic">No name</span>}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {bill.customerPhone}
+                        {bill.customerPhone || "—"}
                       </TableCell>
                       <TableCell className="text-sm">
                         {format(new Date(bill.date), "MMM d, yyyy")}
@@ -283,14 +284,20 @@ export default function Bills() {
                       {selectedBill.billNumber}
                     </DialogTitle>
                     <DialogDescription className="text-base mt-1">
-                      Customer:{" "}
-                      <span className="font-semibold text-foreground">
-                        {selectedBill.customerName}
-                      </span>
-                      {selectedBill.customerPhone && (
-                        <span className="ml-2">
-                          • {selectedBill.customerPhone}
-                        </span>
+                      {selectedBill.customerName ? (
+                        <>
+                          Customer:{" "}
+                          <span className="font-semibold text-foreground">
+                            {selectedBill.customerName}
+                          </span>
+                          {selectedBill.customerPhone && (
+                            <span className="ml-2">
+                              • {selectedBill.customerPhone}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="italic text-muted-foreground">Walk-in customer</span>
                       )}
                     </DialogDescription>
                   </div>
@@ -320,7 +327,7 @@ export default function Bills() {
                             <TableHead className="w-16"></TableHead>
                             <TableHead>Medicine</TableHead>
                             <TableHead className="text-center">
-                              Packets
+                              Qty
                             </TableHead>
                             <TableHead className="text-right">
                               Price/Item
@@ -333,14 +340,14 @@ export default function Bills() {
                         </TableHeader>
                         <TableBody>
                           {selectedBill.items.map((item, index) => {
-                            const medicine = products?.find(
-                              (p) => p.id === item.productId,
+                            const medicine = medicines?.find(
+                              (p) => p.id === item.medicineId,
                             );
-                            const totalPerPacket =
-                              (item.pricePerItem -
-                                (item.discountPerItem || 0)) *
-                              item.itemsPerPacket;
-                            const total = totalPerPacket * item.packetQuantity;
+                            const qty = item.qty ?? 1;
+                            const ipp = item.itemsPerPacket || 1;
+                            const pkts = Math.floor(qty / ipp);
+                            const remItems = qty % ipp;
+                            const total = (item.pricePerItem - (item.discountPerItem || 0)) * qty;
 
                             return (
                               <TableRow
@@ -351,7 +358,7 @@ export default function Bills() {
                                     {medicine?.image ? (
                                       <img
                                         src={medicine.image}
-                                        alt={item.productName}
+                                        alt={item.medicineName}
                                         className="w-full h-full object-cover"
                                       />
                                     ) : (
@@ -361,32 +368,18 @@ export default function Bills() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="font-medium">
-                                    {item.productName}
+                                    {item.medicineName}
                                   </div>
                                   <div className="flex gap-2 mt-1">
-                                    {item.color && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[10px] py-0 h-4"
-                                      >
-                                        {item.color}
-                                      </Badge>
-                                    )}
-                                    {item.size && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[10px] py-0 h-4"
-                                      >
-                                        {item.size}
-                                      </Badge>
-                                    )}
                                     <span className="text-[10px] text-muted-foreground">
-                                      {item.itemsPerPacket} items/packet
+                                      {pkts} pkt{pkts !== 1 ? "s" : ""}
+                                      {remItems > 0 ? ` + ${remItems} items` : ""}
+                                      {!item.medicineId && <em className="ml-1">(custom)</em>}
                                     </span>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-center font-semibold">
-                                  {item.packetQuantity}
+                                  {qty}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   PKR {item.pricePerItem.toFixed(2)}
@@ -422,8 +415,6 @@ export default function Bills() {
                   <div className="hidden">
                     <BillTemplate
                       bill={selectedBill}
-                      categories={categories || []}
-                      products={products || []}
                     />
                   </div>
                 </div>

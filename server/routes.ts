@@ -40,33 +40,33 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // --- Products ---
-  app.get(api.products.list.path, async (req, res) => {
-    const products = await storage.getProducts();
-    res.json(products);
+  // --- Medicines ---
+  app.get(api.medicines.list.path, async (req, res) => {
+    const medicines = await storage.getMedicines();
+    res.json(medicines);
   });
 
-  app.get(api.products.get.path, async (req, res) => {
-    const medicine = await storage.getProduct(req.params.id);
+  app.get(api.medicines.get.path, async (req, res) => {
+    const medicine = await storage.getMedicine(req.params.id);
     if (!medicine) return res.status(404).json({ message: "Medicine not found" });
     res.json(medicine);
   });
 
-  app.get(api.products.getByBarcode.path, async (req, res) => {
-    const medicine = await storage.getProductByBarcode(req.params.barcode);
+  app.get(api.medicines.getByBarcode.path, async (req, res) => {
+    const medicine = await storage.getMedicineByBarcode(req.params.barcode);
     if (!medicine) return res.status(404).json({ message: "Medicine not found" });
     res.json(medicine);
   });
 
-  app.get(api.products.lowStock.path, async (req, res) => {
-    const products = await storage.getLowStockProducts();
-    res.json(products);
+  app.get(api.medicines.lowStock.path, async (req, res) => {
+    const medicines = await storage.getLowStockMedicines();
+    res.json(medicines);
   });
 
-  app.post(api.products.create.path, async (req, res) => {
+  app.post(api.medicines.create.path, async (req, res) => {
     try {
-      const input = api.products.create.input.parse(req.body);
-      const medicine = await storage.createProduct(input);
+      const input = api.medicines.create.input.parse(req.body);
+      const medicine = await storage.createMedicine(input);
       res.status(201).json(medicine);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -76,10 +76,10 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.products.update.path, async (req, res) => {
+  app.put(api.medicines.update.path, async (req, res) => {
     try {
-      const input = api.products.update.input.parse(req.body);
-      const updated = await storage.updateProduct(req.params.id, input);
+      const input = api.medicines.update.input.parse(req.body);
+      const updated = await storage.updateMedicine(req.params.id, input);
       if (!updated) return res.status(404).json({ message: "Medicine not found" });
       res.json(updated);
     } catch (err) {
@@ -90,8 +90,8 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.products.delete.path, async (req, res) => {
-    await storage.deleteProduct(req.params.id);
+  app.delete(api.medicines.delete.path, async (req, res) => {
+    await storage.deleteMedicine(req.params.id);
     res.status(204).send();
   });
 
@@ -106,7 +106,7 @@ export async function registerRoutes(
       const input = api.sales.create.input.parse(req.body);
       // Validate stock availability before sale
       for (const item of input.items) {
-        const medicine = await storage.getProduct(item.productId);
+        const medicine = await storage.getMedicine(item.medicineId);
         if (!medicine) {
           return res.status(400).json({ message: `Medicine ${item.name} not found` });
         }
@@ -192,6 +192,49 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Invalid status" });
     }
     await storage.updateBillStatus(req.params.id, status);
+    res.status(204).send();
+  });
+
+  // --- Medicines DB (Directory) ---
+  app.get("/api/medicines-db", async (req, res) => {
+    const search = req.query.search as string | undefined;
+    const results = await storage.searchMedicinesDb(search);
+    res.json(results);
+  });
+
+  app.patch("/api/medicines-db/:id/activate", async (req, res) => {
+    try {
+      const { itemsPerPacket, stock, actualPrice, price, expiryDate, categoryId, barcode, sku, supplierName, lowStockThreshold, name, description } = req.body;
+      const dbEntry = (await storage.searchMedicinesDb())[0]; // fetch just to get name etc if needed
+      // Create the medicine in the main collection
+      const medicine = await storage.createMedicine({
+        name: req.body.name,
+        description: req.body.description || "",
+        barcode: barcode || undefined,
+        price: Number(price),
+        actualPrice: Number(actualPrice),
+        stock: Number(stock),
+        itemsPerPacket: Number(itemsPerPacket),
+        lowStockThreshold: Number(lowStockThreshold) || 10,
+        categoryId: categoryId || undefined,
+        sku: sku || "",
+        supplierName: supplierName || "",
+        supplierPhone: req.body.supplierPhone || "",
+        supplierAddress: req.body.supplierAddress || "",
+        expiryDate: expiryDate || "",
+        image: "",
+      });
+      // Mark as activated in medicines_db
+      await storage.activateMedicineInDb(req.params.id, medicine.id);
+      res.status(201).json(medicine);
+    } catch (err) {
+      console.error("Activate medicine error:", err);
+      res.status(500).json({ message: "Failed to activate medicine" });
+    }
+  });
+
+  app.patch("/api/medicines-db/:id/deactivate", async (req, res) => {
+    await storage.deactivateMedicineInDb(req.params.id);
     res.status(204).send();
   });
 

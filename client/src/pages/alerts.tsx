@@ -1,21 +1,25 @@
 import { Layout } from "@/components/layout";
-import { useProducts } from "@/hooks/use-products";
+import { useMedicines } from "@/hooks/use-medicines";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, ShieldCheck, Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { formatStock } from "@shared/schema";
 
 export default function LowStockAlerts() {
-  const { data: products, isLoading } = useProducts();
+  const { data: medicines, isLoading } = useMedicines();
 
-  const lowStockProducts =
-    products?.filter((p) => {
+  const lowStockMedicines =
+    medicines?.filter((p) => {
       const threshold =
         p.lowStockThreshold !== undefined && p.lowStockThreshold !== null
           ? p.lowStockThreshold
           : 5;
-      return p.stock <= threshold;
+      const ipp = p.itemsPerPacket || 1;
+      const totalItems = p.totalItemsInStock || (p.stock * ipp);
+      const packets = Math.floor(totalItems / ipp);
+      return packets <= threshold;
     }) || [];
 
   return (
@@ -26,13 +30,13 @@ export default function LowStockAlerts() {
             Low Stock Alerts
           </h2>
           <p className="text-muted-foreground">
-            Products that need immediate restocking based on their individual
+            Medicines that need immediate restocking based on their individual
             thresholds.
           </p>
         </div>
 
         <div className="grid gap-6">
-          {lowStockProducts.map((medicine) => (
+          {lowStockMedicines.map((medicine) => (
             <Card
               key={medicine.id}
               className="border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-shadow bg-card overflow-hidden"
@@ -93,9 +97,9 @@ export default function LowStockAlerts() {
 
                       <div className="flex flex-col justify-center">
                         <div className="text-2xl font-bold text-red-600 flex items-baseline gap-2">
-                          {medicine.stock}
+                          {formatStock(medicine.totalItemsInStock || (medicine.stock * (medicine.itemsPerPacket || 1)), medicine.itemsPerPacket || 1)}
                           <span className="text-sm font-medium text-muted-foreground uppercase tracking-tighter">
-                            Packets Remaining
+                            Remaining
                           </span>
                         </div>
                         <div className="w-full bg-muted h-2 rounded-full mt-2 overflow-hidden">
@@ -121,7 +125,7 @@ export default function LowStockAlerts() {
                       <Plus className="w-5 h-5" /> Restock Now
                     </Button>
                   </Link>
-                  <Link href="/products">
+                  <Link href="/medicines">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -135,7 +139,7 @@ export default function LowStockAlerts() {
             </Card>
           ))}
 
-          {!isLoading && lowStockProducts.length === 0 && (
+          {!isLoading && lowStockMedicines.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-3xl border border-dashed border-muted-foreground/20 animate-in fade-in zoom-in duration-500">
               <div className="bg-green-100 p-6 rounded-full mb-6 shadow-inner ring-8 ring-green-50/50">
                 <ShieldCheck className="w-16 h-16 text-green-600" />
@@ -144,7 +148,7 @@ export default function LowStockAlerts() {
                 Stock Levels Perfect!
               </h3>
               <p className="text-xl text-muted-foreground max-w-md mx-auto">
-                All products are currently above their minimum safety
+                All medicines are currently above their minimum safety
                 thresholds.
               </p>
             </div>

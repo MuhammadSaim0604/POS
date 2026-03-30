@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
-import { useProducts, useProductByBarcode } from "@/hooks/use-products";
+import { useMedicines, useMedicineByBarcode } from "@/hooks/use-medicines";
 import { useCreateSale } from "@/hooks/use-sales";
 import { type Medicine, type SaleItem } from "@shared/schema";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ interface CartItem extends SaleItem {
 }
 
 export default function POS() {
-  const { data: products } = useProducts();
+  const { data: medicines } = useMedicines();
   const createSale = useCreateSale();
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,7 +41,8 @@ export default function POS() {
   }, []);
 
   const addToCart = (medicine: Medicine) => {
-    if (medicine.stock <= 0) {
+    const totalAvail = medicine.totalItemsInStock || (medicine.stock * (medicine.itemsPerPacket || 1));
+    if (totalAvail <= 0) {
       toast({
         title: "Out of Stock",
         description: `${medicine.name} is currently unavailable.`,
@@ -51,18 +52,18 @@ export default function POS() {
     }
 
     setCart((prev) => {
-      const existing = prev.find((item) => item.productId === medicine.id);
+      const existing = prev.find((item) => item.medicineId === medicine.id);
       if (existing) {
-        if (existing.quantity >= medicine.stock) {
+        if (existing.quantity >= totalAvail) {
           toast({
             title: "Stock Limit Reached",
-            description: `Only ${medicine.stock} items available.`,
+            description: `Only ${totalAvail} items available.`,
             variant: "destructive",
           });
           return prev;
         }
         return prev.map((item) =>
-          item.productId === medicine.id
+          item.medicineId === medicine.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -70,11 +71,11 @@ export default function POS() {
       return [
         ...prev,
         {
-          productId: medicine.id,
+          medicineId: medicine.id,
           name: medicine.name,
           priceAtSale: medicine.price,
           quantity: 1,
-          stockMax: medicine.stock,
+          stockMax: totalAvail,
         },
       ];
     });
@@ -85,14 +86,14 @@ export default function POS() {
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+  const removeFromCart = (medicineId: string) => {
+    setCart((prev) => prev.filter((item) => item.medicineId !== medicineId));
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (medicineId: string, delta: number) => {
     setCart((prev) => {
       return prev.map((item) => {
-        if (item.productId === productId) {
+        if (item.medicineId === medicineId) {
           const newQty = item.quantity + delta;
           if (newQty <= 0) return item;
           if (newQty > item.stockMax) {
@@ -112,7 +113,7 @@ export default function POS() {
 
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const medicine = products?.find((p) => p.barcode === barcodeInput);
+    const medicine = medicines?.find((p) => p.barcode === barcodeInput);
     if (medicine) {
       addToCart(medicine);
       setBarcodeInput("");
@@ -150,7 +151,7 @@ export default function POS() {
     }
   };
 
-  const filteredProducts = products?.filter(
+  const filteredMedicines = medicines?.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.barcode.includes(search)
@@ -167,7 +168,7 @@ export default function POS() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search products..."
+                placeholder="Search medicines..."
                 className="pl-9 h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -188,7 +189,7 @@ export default function POS() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-2">
-            {filteredProducts?.map((medicine) => (
+            {filteredMedicines?.map((medicine) => (
               <Card
                 key={medicine.id}
                 onClick={() => addToCart(medicine)}
@@ -200,7 +201,14 @@ export default function POS() {
                       {medicine.name}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Stock: <span className={medicine.stock < 5 ? "text-red-500 font-bold" : ""}>{medicine.stock}</span>
+                      {(() => {
+                        const ipp = medicine.itemsPerPacket || 1;
+                        const total = medicine.totalItemsInStock || (medicine.stock * ipp);
+                        const pkts = Math.floor(total / ipp);
+                        const rem = total % ipp;
+                        const display = ipp === 1 ? `${total}` : rem === 0 ? `${pkts} pkts` : `${pkts} pkts ${rem}`;
+                        return <span className={total < 5 ? "text-red-500 font-bold" : ""}>{display}</span>;
+                      })()}
                     </p>
                   </div>
                   
@@ -232,10 +240,10 @@ export default function POS() {
                 </CardContent>
               </Card>
             ))}
-            {filteredProducts?.length === 0 && (
+            {filteredMedicines?.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Package className="h-12 w-12 mb-2 opacity-20" />
-                <p>No products found.</p>
+                <p>No medicines found.</p>
               </div>
             )}
           </div>
@@ -253,7 +261,7 @@ export default function POS() {
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {cart.map((item) => (
               <div
-                key={item.productId}
+                key={item.medicineId}
                 className="flex items-center justify-between bg-background p-3 rounded-lg border shadow-sm animate-enter"
               >
                 <div className="flex-1 min-w-0 mr-4">
@@ -267,7 +275,7 @@ export default function POS() {
                     size="icon"
                     variant="outline"
                     className="h-7 w-7"
-                    onClick={() => updateQuantity(item.productId, -1)}
+                    onClick={() => updateQuantity(item.medicineId, -1)}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -276,7 +284,7 @@ export default function POS() {
                     size="icon"
                     variant="outline"
                     className="h-7 w-7"
-                    onClick={() => updateQuantity(item.productId, 1)}
+                    onClick={() => updateQuantity(item.medicineId, 1)}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -284,7 +292,7 @@ export default function POS() {
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 ml-1"
-                    onClick={() => removeFromCart(item.productId)}
+                    onClick={() => removeFromCart(item.medicineId)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

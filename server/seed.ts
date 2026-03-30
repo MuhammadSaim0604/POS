@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { seedMedicinesDb } from "./seed-medicines-db";
 
 export async function seedDatabase() {
   try {
@@ -10,7 +11,7 @@ export async function seedDatabase() {
       const electronics = await storage.createCategory({ name: "Electronics" });
       const beverages = await storage.createCategory({ name: "Beverages" });
 
-      await storage.createProduct({
+      await storage.createMedicine({
         name: "Whole Milk 1L",
         description: "Fresh whole milk in 1 liter bottle",
         barcode: "1234567890123",
@@ -28,7 +29,7 @@ export async function seedDatabase() {
         image: ""
       });
 
-      await storage.createProduct({
+      await storage.createMedicine({
         name: "USB-C Cable 1m",
         description: "High-speed USB-C to USB-C charging and data cable",
         barcode: "9876543210987",
@@ -46,7 +47,7 @@ export async function seedDatabase() {
         image: ""
       });
 
-      await storage.createProduct({
+      await storage.createMedicine({
         name: "Cola 330ml",
         description: "Refreshing cola beverage in 330ml can",
         barcode: "5432109876543",
@@ -66,6 +67,8 @@ export async function seedDatabase() {
 
       console.log("Seeding complete.");
     }
+    // Always seed medicines_db if empty
+    await seedMedicinesDb();
   } catch (err) {
     console.error("Error seeding database:", err);
   }
