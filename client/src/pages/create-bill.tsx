@@ -121,6 +121,7 @@ export default function CreateBill() {
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
 
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const searchListRef = useRef<HTMLDivElement>(null);
 
   // Stable refs so shortcut handler doesn't need to re-register on every state change
   const showSearchRef = useRef(false);
@@ -183,6 +184,13 @@ export default function CreateBill() {
 
   // Reset search selection when query changes
   useEffect(() => { setSelectedSearchIndex(0); }, [searchQuery]);
+
+  // Auto-scroll the highlighted row into view when navigating with arrow keys
+  useEffect(() => {
+    if (!showSearch) return;
+    const row = searchListRef.current?.querySelector<HTMLElement>(`[data-search-row="${selectedSearchIndex}"]`);
+    if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedSearchIndex, showSearch]);
 
   // Global keyboard shortcut handler
   useEffect(() => {
@@ -497,6 +505,11 @@ export default function CreateBill() {
       });
     }
   };
+
+  // Sync function refs on every render so shortcuts always call the latest closures
+  addNewBillRef.current = addNewBill;
+  handleSaveRef.current = handleSave;
+  updateCurrentBillRef.current = updateCurrentBill;
 
   const filteredMedicines = medicines?.filter(
     (p: Medicine) =>
@@ -1047,7 +1060,7 @@ export default function CreateBill() {
               {filteredMedicines?.length || 0} medicine(s) found
             </p>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" ref={searchListRef}>
             {filteredMedicines && filteredMedicines.length > 0 ? (
               <table className="w-full text-sm border-collapse">
                 <thead className="sticky top-0 z-10">
@@ -1070,6 +1083,7 @@ export default function CreateBill() {
                     return (
                       <tr
                         key={medicine.id}
+                        data-search-row={idx}
                         onClick={() => addMedicineToBill(medicine)}
                         className={`border-b cursor-pointer transition-colors ${
                           isSelected
