@@ -223,6 +223,7 @@ export async function registerRoutes(
         supplierAddress: req.body.supplierAddress || "",
         expiryDate: expiryDate || "",
         image: "",
+        totalItemsInStock: Number(stock) * (Number(itemsPerPacket) || 1),
       });
       // Mark as activated in medicines_db
       await storage.activateMedicineInDb(req.params.id, medicine.id);
